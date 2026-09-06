@@ -43,3 +43,7 @@ example
 # generated native folders
 /ios
 /android
+
+# credenciales Firebase/Google (descargar desde Firebase Console, nunca commitear)
+google-services.json
+GoogleService-Info.plist

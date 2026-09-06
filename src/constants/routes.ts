@@ -1,11 +1,10 @@
 /**
- * Rutas planeadas de Expo Router (ARCHITECTURE.md secciones 5 y 7). Son constantes de string
- * para que las fases futuras (auth, timer, calendario, etc.) referencien un único lugar al crear
- * los archivos reales bajo `src/app/`, en vez de repetir literales sueltos.
+ * Rutas de Expo Router (ARCHITECTURE.md secciones 5 y 7). Son constantes de string para que todas
+ * las fases referencien un único lugar en vez de repetir literales sueltos.
  *
- * IMPORTANTE: estos archivos todavía NO existen (Fase 1 no crea pantallas reales). La navegación
- * actual del template (`src/components/app-tabs.tsx`) es temporal y será adaptada o reemplazada
- * cuando una fase futura construya las pantallas reales en estos paths.
+ * `auth` y `tabs` ya existen como pantallas reales desde la Fase 2 (`src/app/(auth)/*`,
+ * `src/app/(tabs)/*`, ver AuthGate en `src/app/_layout.tsx`); las pantallas de `tabs` distintas de
+ * `settings` son placeholders hasta su fase correspondiente. Los `modals` todavía no existen.
  */
 export const ROUTES = {
   auth: {
