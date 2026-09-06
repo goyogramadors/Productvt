@@ -12,6 +12,7 @@ import {
   signInWithGooglePopupWeb as firebaseSignInWithGooglePopupWeb,
   type FirebaseUser,
 } from '@/infrastructure/firebase/auth';
+import { ensureStandardPresetExists } from '@/features/presets/services/preset-service';
 import { ensureUserProfileAndSettings } from '@/repositories/user/userRepository';
 
 export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
@@ -86,6 +87,20 @@ async function loadProfileAndSettings(user: MinimalAuthenticatedUser): Promise<{
   return result.data;
 }
 
+/**
+ * Siembra idempotente del preset "Estándar" (SPEC.md sección 13.1) para usuarios nuevos — funciona
+ * igual para registro por email y primer login con Google, porque ambos disparan el mismo
+ * `onAuthStateChanged`. Se llama solo una vez por transición `signedOut -> signedIn` (no en cada
+ * `refreshProfile`, que se dispara en cada guardado de Configuración) para no repetir una lectura
+ * de Firestore innecesaria en cada edición de ajustes.
+ */
+async function seedStandardPresetIfNeeded(uid: string): Promise<void> {
+  const presetResult = await ensureStandardPresetExists(uid);
+  if (!presetResult.success) {
+    console.warn('[authStore] No se pudo sembrar el preset estándar:', presetResult.error.message);
+  }
+}
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   status: 'loading',
   user: null,
@@ -119,6 +134,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           set({ profile, settings });
         }
       });
+      void seedStandardPresetIfNeeded(firebaseUser.uid);
     });
 
     return unsubscribe;
