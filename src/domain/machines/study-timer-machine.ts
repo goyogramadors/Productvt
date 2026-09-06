@@ -34,7 +34,7 @@ import type { StudyTimerEvent } from './study-timer-events';
  * parámetro — nunca `Date.now()` interno — para que sea 100% testeable de forma determinística.
  *
  * `StudySessionCoordinator` (capa de aplicación) es quien: genera `sessionId`/`deviceId`, decide
- * el `nowIso` real (`Date.now() + clockOffsetMs`, TODO de Fase 4b en `timer-engine.ts`), llama a
+ * el `nowIso` real (`Date.now() + clockOffsetMs`, docs/04-SINCRONIZACION.md sección 6), llama a
  * estas funciones, persiste el resultado contra `ActiveSessionRepository`/`SessionRepository`, y
  * ejecuta las `NotificationIntent[]` devueltas contra `timerNotificationService`/`timerAudioService`.
  */
@@ -158,8 +158,12 @@ export function transitionStudyTimer(
   switch (event.type) {
     case 'HYDRATE':
       // Recuperación tras cierre inesperado del dominante: acepta el singleton tal cual sin
-      // aplicar ninguna regla de negocio (eso lo hace `ActiveTimerRecoveryService` antes de
-      // llamar aquí, comparando `EXPIRE`/`ZOMBIE_TIMEOUT` según corresponda).
+      // aplicar ninguna regla de negocio (eso lo hace `ActiveSessionRecoveryService` antes de
+      // llamar aquí, comparando `EXPIRE`/`ZOMBIE_TIMEOUT` según corresponda —
+      // docs/04-SINCRONIZACION.md sección 8.1). Nota: en la implementación actual, la hidratación
+      // real de `timerStore.ts` no pasa por este evento (evitaría re-escribir un checkpoint
+      // idéntico en Firestore en cada arranque) — queda aquí para quien construya un reductor local
+      // explícito y necesite una transición de dominio para "aceptar lo que diga el servidor".
       return { kind: 'update', active: event.payload.active, notifications: [] };
 
     case 'STUDY_FINISHED': {

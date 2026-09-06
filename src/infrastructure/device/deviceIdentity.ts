@@ -12,7 +12,7 @@ import { STORAGE_KEYS } from '@/infrastructure/storage/keys';
  * un `deviceId` uuid v4 la primera vez que la app arranca en este dispositivo y lo persiste en
  * `productvt.deviceIdentity`. Reinstalar la app genera un `deviceId` nuevo — el singleton remoto
  * sigue siendo la verdad y el dispositivo reinstalado arranca como espectador hasta tomar el
- * control (Fase 4b).
+ * control (docs/04-SINCRONIZACION.md sección 13.2, flujo de solicitud en sección 5).
  *
  * Único archivo que debe llamar a `AsyncStorage`/`expo-crypto`/`expo-device` para esto: el resto de
  * la app consume `getOrCreateDeviceIdentity()`.

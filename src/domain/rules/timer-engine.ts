@@ -9,15 +9,16 @@ import type { ActiveStudySession } from '../entities/active-session';
  */
 
 /**
- * `nowMs` para toda fórmula de este módulo (docs/03-CRONOMETRO.md sección 10.2).
- *
- * TODO (Fase 4b): debe ser `Date.now() + clockOffsetMs`, con `clockOffsetMs` calculado contra
- * `lastCheckpointAt` del servidor (docs/03-CRONOMETRO.md sección 10.2, docs/04-SINCRONIZACION.md,
- * todavía no existe). Esta fase asume el dispositivo actual como único dominante y usa el reloj
- * local sin corregir.
+ * `nowMs` para toda fórmula de este módulo (docs/03-CRONOMETRO.md sección 10.2,
+ * docs/04-SINCRONIZACION.md sección 6): SIEMPRE `Date.now() + clockOffsetMs`, nunca el reloj local
+ * crudo. `clockOffsetMs` lo calcula `computeClockOffsetMs` (`rules/clock-offset.ts`) en cada
+ * checkpoint/snapshot confirmado por el servidor — nunca una sola vez al arrancar (sección 6.3) — y
+ * lo persiste/provee `src/features/timer/store/timerStore.ts` (`productvt.clockOffsetMs`,
+ * docs/02-DOMINIO.md sección 6.4). Recibirlo como parámetro (en vez de leerlo de un módulo global)
+ * es lo que mantiene esta función pura y testeable sin AsyncStorage.
  */
-export function nowMs(): number {
-  return Date.now();
+export function nowMs(clockOffsetMs: number): number {
+  return Date.now() + clockOffsetMs;
 }
 
 /**

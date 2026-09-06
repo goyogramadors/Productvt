@@ -31,3 +31,34 @@ export async function readCachedActiveSession(): Promise<ActiveSession | null> {
     return null;
   }
 }
+
+/** Alias explícito para el paso 1 de `ActiveSessionRecoveryService` (docs/04-SINCRONIZACION.md
+ * sección 8.1): "por si quedó un residuo de una sesión ya cerrada". */
+export function clearCachedActiveSession(): Promise<void> {
+  return cacheActiveSession(null);
+}
+
+/**
+ * `productvt.clockOffsetMs` (docs/02-DOMINIO.md sección 6.4): último `clockOffsetMs` calculado por
+ * `computeClockOffsetMs` (`domain/rules/clock-offset.ts`), recalculado en cada checkpoint/snapshot
+ * confirmado (nunca una sola vez al arrancar, docs/04-SINCRONIZACION.md sección 6.3). `0` por
+ * defecto (reloj sin corregir) cuando todavía no hay ningún valor persistido.
+ */
+export async function readClockOffsetMs(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.clockOffsetMs);
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function writeClockOffsetMs(value: number): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.clockOffsetMs, String(value));
+  } catch {
+    // Conveniencia, no fuente de verdad: un fallo de escritura no debe romper nada.
+  }
+}

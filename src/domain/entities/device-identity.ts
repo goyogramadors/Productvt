@@ -17,8 +17,9 @@ export interface DeviceIdentity {
 
 /**
  * V1: solo Android puede ser dominante (docs/02-DOMINIO.md sección 3.5/7, D "Alcance de
- * plataformas"). Cambiar esto en V1.1 ("web dominante") es literalmente esta única línea más las
- * dos condiciones ya documentadas de `firestore.rules` (Fase 4b).
+ * plataformas"; docs/04-SINCRONIZACION.md sección 5.1). Cambiar esto en V1.1 ("web dominante") es
+ * literalmente esta única línea más las dos condiciones ya documentadas de `firestore.rules`
+ * (`requestFromAndroid()` y `deviceInfo.platform == 'android'` en `create`).
  */
 export function canBeDominant(platform: DeviceIdentity['platform']): boolean {
   return platform === 'android';
@@ -26,14 +27,10 @@ export function canBeDominant(platform: DeviceIdentity['platform']): boolean {
 
 /**
  * `null` si no hay sesión activa; `'dominant'` si `active.dominantDeviceId === device.deviceId`;
- * `'spectator'` en cualquier otro caso.
- *
- * LÍMITE DE FASE (4a, no 4b): esta fase no implementa el protocolo de cambio de dominante — todo
- * dispositivo que inicia una sesión escribe su propio `deviceId` como `dominantDeviceId` y esta
- * función siempre devuelve `'dominant'` para él mientras la sesión exista. La rama `'spectator'`
- * ya está completa y lista para cuando Fase 4b (`controlRequest`) empiece a producirla en la
- * práctica (p. ej. un segundo dispositivo que abre la app mientras el primero tiene una sesión
- * activa ya la ve como espectador hoy, aunque todavía no pueda pedir el control).
+ * `'spectator'` en cualquier otro caso. Ningún dispositivo "sabe" su rol de antemano: se recalcula
+ * cada vez que se lee el singleton (docs/04-SINCRONIZACION.md sección 4.1) — `timerStore.ts` lo
+ * hace en cada `onSnapshot`, nunca lo memoriza como un campo propio que se podría desincronizar de
+ * la verdad remota.
  */
 export function resolveDeviceRole(active: ActiveSession | null, device: DeviceIdentity): DeviceRole | null {
   if (!active) return null;

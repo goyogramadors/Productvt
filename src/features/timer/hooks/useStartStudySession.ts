@@ -16,6 +16,7 @@ export function useStartStudySession() {
   const uid = useAuthStore((s) => s.user?.uid);
   const soundPreferences = useAuthStore((s) => s.settings?.soundPreferences);
   const setActive = useTimerStore((s) => s.setActive);
+  const clockOffsetMs = useTimerStore((s) => s.clockOffsetMs);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export function useStartStudySession() {
         device,
         soundEnabled: soundPreferences?.enabled ?? true,
         volume: soundPreferences?.volume ?? 1,
+        clockOffsetMs,
       });
 
       setIsSubmitting(false);
@@ -48,7 +50,7 @@ export function useStartStudySession() {
       setActive(result.data);
       return true;
     },
-    [uid, soundPreferences, setActive]
+    [uid, soundPreferences, clockOffsetMs, setActive]
   );
 
   return { start, isSubmitting, error, clearError: () => setError(null) };

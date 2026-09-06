@@ -57,6 +57,18 @@ export const timerCopy = {
     targetReachedNotificationTitle: 'Meta alcanzada',
     hardCapNotificationTitle: 'Tiempo libre registrado',
   },
+  spectator: {
+    banner: 'Estás viendo esta sesión desde otro dispositivo (modo espectador). Tocá "Tomar el control" para poder accionarla desde acá.',
+    requestControlButton: 'Tomar el control',
+    webReadOnly: 'La versión web solo puede ver el cronómetro en vivo. Iniciá o accioná la sesión desde el dispositivo Android.',
+  },
+  handoff: {
+    title: '¿Cambiar de dominante?',
+    bodyAsRequester: 'Pediste tomar el control del cronómetro desde este dispositivo.',
+    bodyAsDominant: (deviceName: string) => `${deviceName} quiere tomar el control del cronómetro.`,
+    confirm: 'Sí',
+    reject: 'No',
+  },
 } as const;
 
 /**

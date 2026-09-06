@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { dispatchStudyTimerEvent } from '@/application/coordinators/StudySessionCoordinator';
-import type { ActiveInverseSession, ActiveSession, ActiveStudySession } from '@/domain/entities/active-session';
-import { resolveDeviceRole } from '@/domain/entities/device-identity';
+import type { ActiveInverseSession, ActiveStudySession } from '@/domain/entities/active-session';
 import type { StudyTimerEvent } from '@/domain/machines/study-timer-events';
 import { computeLiveEffectiveStudySeconds, computeRemainingSeconds, nowMs } from '@/domain/rules/timer-engine';
 import { useAuthStore } from '@/store/auth/authStore';
@@ -30,15 +29,17 @@ function resolveAutoEvent(state: ActiveStudySession['currentState']): StudyTimer
 
 /**
  * Hook central de lectura en vivo del cronómetro (docs/03-CRONOMETRO.md sección 10: motor por
- * timestamps, refresco visual cada ~500ms, nunca fuente de verdad). Además, si este dispositivo es
- * el dominante de la sesión, dispara los eventos "auto" (`STUDY_FINISHED`/`BREAK_FINISHED`/
- * `LUNCH_FINISHED`/`EXPIRE`) en cuanto `remaining` llega a 0 — sin esperar a que el usuario vuelva
- * a la app (sección 9.2/10.4 ya cubren la recuperación perezosa para cuando la app SÍ estuvo
- * cerrada; este hook cubre el caso normal de la app abierta y en primer plano).
+ * timestamps, refresco visual cada ~500ms, nunca fuente de verdad). Además, dispara los eventos
+ * "auto" en cuanto `remaining` llega a 0, sin esperar a que el usuario vuelva a la app:
+ * `STUDY_FINISHED`/`BREAK_FINISHED`/`LUNCH_FINISHED` son checkpoints normales que SOLO el dominante
+ * puede escribir (docs/04-SINCRONIZACION.md sección 4.2); `EXPIRE` es un cierre perezoso que
+ * CUALQUIER rol puede intentar (sección 4.3 punto 5, sección 7) — el coordinador lo resuelve vía la
+ * transacción condicional, así que dejarlo pasar desde un espectador es seguro y deseable.
  */
 export function useActiveTimer() {
   const active = useTimerStore((s) => s.active);
-  const device = useTimerStore((s) => s.device);
+  const role = useTimerStore((s) => s.role);
+  const clockOffsetMs = useTimerStore((s) => s.clockOffsetMs);
   const isHydrating = useTimerStore((s) => s.isHydrating);
   const setActive = useTimerStore((s) => s.setActive);
   const uid = useAuthStore((s) => s.user?.uid);
@@ -54,18 +55,22 @@ export function useActiveTimer() {
 
   const studyActive: ActiveStudySession | null = active?.type === 'study' ? active : null;
   const inverseActive: ActiveInverseSession | null = active?.type === 'inverse' ? active : null;
-  const role = active && device ? resolveDeviceRole(active as ActiveSession, device) : null;
   const isDominant = role === 'dominant';
 
-  const remainingSeconds = studyActive ? computeRemainingSeconds(studyActive, nowMs()) : null;
-  const liveEffectiveStudySeconds = studyActive ? computeLiveEffectiveStudySeconds(studyActive, nowMs()) : null;
+  const remainingSeconds = studyActive ? computeRemainingSeconds(studyActive, nowMs(clockOffsetMs)) : null;
+  const liveEffectiveStudySeconds = studyActive
+    ? computeLiveEffectiveStudySeconds(studyActive, nowMs(clockOffsetMs))
+    : null;
 
   useEffect(() => {
-    if (!studyActive || !isDominant || !uid || isDispatchingAutoEventRef.current) return;
-    const remaining = computeRemainingSeconds(studyActive, nowMs());
+    if (!studyActive || !uid || isDispatchingAutoEventRef.current) return;
+    const remaining = computeRemainingSeconds(studyActive, nowMs(clockOffsetMs));
     if (remaining > 0) return;
     const autoEventType = resolveAutoEvent(studyActive.currentState);
     if (!autoEventType) return;
+    // STUDY_FINISHED/BREAK_FINISHED/LUNCH_FINISHED: checkpoint normal, solo el dominante.
+    // EXPIRE: cierre perezoso, cualquier rol puede intentarlo (el coordinador decide la primitiva).
+    if (autoEventType !== 'EXPIRE' && !isDominant) return;
 
     isDispatchingAutoEventRef.current = true;
     void dispatchStudyTimerEvent({
@@ -74,11 +79,12 @@ export function useActiveTimer() {
       event: { type: autoEventType } as StudyTimerEvent,
       soundEnabled: soundPreferences?.enabled ?? true,
       volume: soundPreferences?.volume ?? 1,
+      clockOffsetMs,
     })
       .then((result) => {
         if (!result.success) return;
         if (result.data.outcome === 'updated') setActive(result.data.active);
-        if (result.data.outcome === 'closed') setActive(null);
+        if (result.data.outcome === 'closed' || result.data.outcome === 'closed_lazily') setActive(null);
       })
       .finally(() => {
         isDispatchingAutoEventRef.current = false;
@@ -86,7 +92,7 @@ export function useActiveTimer() {
     // `tick` fuerza la re-evaluación cada 500ms (motor por timestamps, sección 10) aunque `studyActive`
     // no haya cambiado de referencia mientras un tramo corre sin checkpoints intermedios.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, studyActive, isDominant, uid, soundPreferences]);
+  }, [tick, studyActive, isDominant, uid, soundPreferences, clockOffsetMs]);
 
   return {
     active,
@@ -94,6 +100,7 @@ export function useActiveTimer() {
     inverseActive,
     isHydrating,
     isDominant,
+    role,
     remainingSeconds,
     liveEffectiveStudySeconds,
   };

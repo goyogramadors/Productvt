@@ -9,6 +9,7 @@ import { CancelSessionModal } from '@/features/timer/components/cancel-session-m
 import { LunchPanel } from '@/features/timer/components/lunch-panel';
 import { useBreakSelection } from '@/features/timer/hooks/useBreakSelection';
 import { useCancelStudySession } from '@/features/timer/hooks/useCancelStudySession';
+import { useDominantHandoff } from '@/features/timer/hooks/useDominantHandoff';
 import { useStudyTimerDispatch } from '@/features/timer/hooks/useStudyTimerDispatch';
 import { formatHoursMinutesSeconds, formatMinutesSeconds } from '@/features/timer/utils/formatDuration';
 import { useTheme } from '@/hooks/use-theme';
@@ -44,6 +45,7 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
   const breakSelection = useBreakSelection(active);
   const cancellation = useCancelStudySession(active);
   const { dispatch, isDispatching, error, clearError } = useStudyTimerDispatch();
+  const handoff = useDominantHandoff();
 
   const showLunchPanel = active.currentState !== 'lunch_running';
   const isWaitingState =
@@ -69,9 +71,20 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
       </View>
 
       {!isDominant ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          Estás viendo esta sesión desde otro dispositivo (modo espectador).
-        </ThemedText>
+        <View style={styles.spectatorBanner}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {timerCopy.spectator.banner}
+          </ThemedText>
+          {handoff.canRequestControl ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={handoff.isSubmitting}
+              onPress={() => void handoff.requestControl()}
+              style={[styles.secondaryButton, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold">{timerCopy.spectator.requestControlButton}</ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
 
       {error ? (
@@ -88,7 +101,7 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
             clearError();
             void dispatch(active, { type: 'ACK_STUDY_FINISHED' });
           }}
-          style={[styles.primaryButton, { backgroundColor: theme.text }]}>
+          style={[styles.primaryButton, { backgroundColor: theme.text, opacity: isDominant ? 1 : 0.5 }]}>
           <ThemedText type="smallBold" themeColor="background">
             Seguir
           </ThemedText>
@@ -101,7 +114,7 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
             accessibilityRole="button"
             disabled={breakSelection.isDispatching}
             onPress={() => void breakSelection.continueStudy()}
-            style={[styles.primaryButton, { backgroundColor: theme.text }]}>
+            style={[styles.primaryButton, { backgroundColor: theme.text, opacity: isDominant ? 1 : 0.5 }]}>
             <ThemedText type="smallBold" themeColor="background">
               {timerCopy.waitingBreakCompleted.continueStudy}
             </ThemedText>
@@ -110,7 +123,7 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
             accessibilityRole="button"
             disabled={breakSelection.isDispatching}
             onPress={() => void breakSelection.endSession()}
-            style={[styles.secondaryButton, { backgroundColor: theme.backgroundElement }]}>
+            style={[styles.secondaryButton, { backgroundColor: theme.backgroundElement, opacity: isDominant ? 1 : 0.5 }]}>
             <ThemedText type="smallBold">{timerCopy.waitingBreakCompleted.endSession}</ThemedText>
           </Pressable>
         </View>
@@ -119,7 +132,7 @@ export function TimerActivePanel({ active, remainingSeconds, liveEffectiveStudyS
       {showLunchPanel ? <LunchPanel active={active} /> : null}
 
       <Pressable accessibilityRole="button" onPress={cancellation.open} style={styles.cancelLink}>
-        <ThemedText type="small" style={{ color: StatusColors.danger }}>
+        <ThemedText type="small" style={{ color: StatusColors.danger, opacity: isDominant ? 1 : 0.5 }}>
           {timerCopy.cancelSession.title}
         </ThemedText>
       </Pressable>
@@ -143,6 +156,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.three, alignItems: 'center' },
+  spectatorBanner: { gap: Spacing.two, alignItems: 'center' },
   clock: { fontVariant: ['tabular-nums'] },
   statsRow: { flexDirection: 'row', gap: Spacing.four, marginVertical: Spacing.two },
   stat: { alignItems: 'center', gap: Spacing.half },

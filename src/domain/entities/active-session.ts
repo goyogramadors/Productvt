@@ -14,25 +14,23 @@ import type {
  * en `ActiveStudySession | ActiveInverseSession`. AsyncStorage (`timerPersistence.ts`) solo acelera
  * el arranque del dispositivo dominante; Firestore es siempre la verdad.
  *
- * LÍMITE EXPLÍCITO DE ESTA FASE (4a, no 4b — ver docs/02-DOMINIO.md sección 3.4 "Reglas de
- * escritura del singleton" puntos 3-4 y docs/03-CRONOMETRO.md, ambos fuera de alcance aquí):
- * `DeviceRole`/`ControlRequest` se definen (el tipo existe, `sessions/{sessionId}` y
- * `active/session` ya reservan el campo) pero NINGÚN código de esta fase escribe ni lee
- * `controlRequest` para cambiar de dominante — eso es el protocolo de `docs/04-SINCRONIZACION.md`
- * (Fase 4b, todavía no existe). Esta fase asume siempre `dominantDeviceId === deviceId` local.
+ * `DeviceRole`/`ControlRequest` (protocolo completo de cambio de dominante) están implementados en
+ * `src/repositories/active-session/activeSessionRepository.ts`
+ * (`requestControlOfActiveSession`/`cancelControlRequest`/`takeoverActiveSession`) y
+ * `src/features/timer/hooks/useDominantHandoff.ts` (docs/04-SINCRONIZACION.md sección 5).
  */
 
 /** uuid v4 generado y persistido localmente (docs/02-DOMINIO.md sección 6.4); nunca derivado del hardware. */
 export type DeviceId = string;
 
-/** Fase 4b: hoy todo dispositivo que inicia una sesión es 'dominant' por definición (ver límite de fase arriba). */
+/** `resolveDeviceRole` (`domain/entities/device-identity.ts`) es la única forma válida de obtenerlo. */
 export type DeviceRole = 'dominant' | 'spectator';
 
 /**
  * Solicitud de un espectador para tomar el control del timer activo (docs/02-DOMINIO.md sección
- * 3.4/5.3). El tipo se define completo desde ya para que el esquema de `active/session` no
- * necesite una migración cuando Fase 4b implemente su lógica; ningún flujo de esta fase produce ni
- * consume un `ControlRequest` real.
+ * 3.4/5.3, docs/04-SINCRONIZACION.md sección 5). `requestControlOfActiveSession`/
+ * `cancelControlRequest`/`takeoverActiveSession` (repositorio) lo escriben; `useDominantHandoff` lo
+ * consume.
  */
 export interface ControlRequest {
   requesterDeviceId: DeviceId;
@@ -57,11 +55,8 @@ interface ActiveSessionBase {
   /** Será el id del documento en `sessions/` al materializar (misma identidad de principio a fin). */
   sessionId: string;
   userId: string;
-  /**
-   * Fase 4b, TODO de una línea: hoy siempre es el `deviceId` local de quien inició la sesión (sin
-   * lógica de cesión ni de detección de otros dominantes); `clockOffset` contra el reloj del
-   * servidor tampoco existe todavía — ver `src/domain/rules/timer-engine.ts`.
-   */
+  /** Único dispositivo autorizado a escribir transiciones (docs/04-SINCRONIZACION.md sección 4);
+   * cambia vía `takeoverActiveSession` (toma de control, sección 5), nunca directamente. */
   dominantDeviceId: DeviceId;
   name: string;
   categoryId: string;

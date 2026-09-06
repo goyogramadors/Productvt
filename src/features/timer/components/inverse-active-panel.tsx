@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radii, Spacing, StatusColors } from '@/constants/theme';
+import { useDominantHandoff } from '@/features/timer/hooks/useDominantHandoff';
 import { useInverseTimer } from '@/features/timer/hooks/useInverseTimer';
 import { formatHoursMinutesSeconds } from '@/features/timer/utils/formatDuration';
 import { useTheme } from '@/hooks/use-theme';
@@ -17,6 +18,7 @@ import { timerCopy } from '@/i18n/es';
 export function InverseActivePanel() {
   const theme = useTheme();
   const inverse = useInverseTimer();
+  const handoff = useDominantHandoff();
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
   if (!inverse.inverseActive) return null;
@@ -48,6 +50,23 @@ export function InverseActivePanel() {
         </ThemedText>
       ) : null}
 
+      {!inverse.isDominant ? (
+        <View style={styles.spectatorBanner}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {timerCopy.spectator.banner}
+          </ThemedText>
+          {handoff.canRequestControl ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={handoff.isSubmitting}
+              onPress={() => void handoff.requestControl()}
+              style={[styles.secondaryButton, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold">{timerCopy.spectator.requestControlButton}</ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       {inverse.error ? (
         <ThemedText type="small" style={styles.errorText}>
           {inverse.error}
@@ -60,7 +79,10 @@ export function InverseActivePanel() {
         onPress={() => void inverse.finish()}
         style={[
           styles.finishButton,
-          { backgroundColor: inverse.targetReached ? StatusColors.success : theme.text },
+          {
+            backgroundColor: inverse.targetReached ? StatusColors.success : theme.text,
+            opacity: inverse.isDominant ? 1 : 0.5,
+          },
         ]}>
         <ThemedText type="smallBold" themeColor="background">
           Finalizar
@@ -68,7 +90,7 @@ export function InverseActivePanel() {
       </Pressable>
 
       <Pressable accessibilityRole="button" onPress={() => setIsCancelOpen(true)} style={styles.cancelLink}>
-        <ThemedText type="small" style={{ color: StatusColors.danger }}>
+        <ThemedText type="small" style={{ color: StatusColors.danger, opacity: inverse.isDominant ? 1 : 0.5 }}>
           Cancelar
         </ThemedText>
       </Pressable>
@@ -101,6 +123,8 @@ export function InverseActivePanel() {
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.three, alignItems: 'center' },
+  spectatorBanner: { gap: Spacing.two, alignItems: 'center' },
+  secondaryButton: { borderRadius: Radii.medium, paddingVertical: Spacing.two, paddingHorizontal: Spacing.four, alignItems: 'center' },
   clock: { fontVariant: ['tabular-nums'] },
   finishButton: { borderRadius: Radii.medium, paddingVertical: Spacing.three, paddingHorizontal: Spacing.five, alignItems: 'center' },
   cancelLink: { paddingVertical: Spacing.two },

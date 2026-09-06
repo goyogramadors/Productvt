@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
   deviceIdentity: 'productvt.deviceIdentity',
   /** Último `ActiveSession` conocido (acelera el arranque del dominante; la verdad es Firestore). */
   activeSessionCache: 'productvt.activeSessionCache',
-  /** Último `clockOffset` calculado (Fase 4b) — todas las plataformas. */
+  /** Último `clockOffsetMs` calculado (docs/04-SINCRONIZACION.md sección 6) — todas las plataformas. */
   clockOffsetMs: 'productvt.clockOffsetMs',
   /** URI del audio propio elegido con `expo-document-picker` (D18: local, no sincronizado) — solo Android. */
   customSoundUri: 'productvt.customSoundUri',

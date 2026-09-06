@@ -38,14 +38,21 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
   return requested.granted;
 }
 
-async function scheduleAt(sessionId: string, purpose: NotificationPurpose, fireAtIso: string): Promise<void> {
+async function scheduleAt(
+  sessionId: string,
+  purpose: NotificationPurpose,
+  fireAtIso: string,
+  clockOffsetMs: number
+): Promise<void> {
   const identifier = buildIdentifier(sessionId, purpose);
   await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => undefined);
   const copy = notificationCopy[purpose];
 
   if (purpose === 'inverse_reminder') {
     // Recordatorio periódico "no exige respuesta" (docs/03-CRONOMETRO.md sección 12.3): una sola
-    // notificación repetible cada 15 min, en vez de reprogramar una por una.
+    // notificación repetible cada 15 min, en vez de reprogramar una por una. El SO cuenta este
+    // intervalo con su propio reloj (no hace falta `clockOffsetMs` para un `repeats: true` relativo
+    // sin ancla absoluta).
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: { title: copy.title, body: copy.body, sound: true },
@@ -58,7 +65,14 @@ async function scheduleAt(sessionId: string, purpose: NotificationPurpose, fireA
     return;
   }
 
-  const secondsUntilFire = Math.max(1, Math.round((Date.parse(fireAtIso) - Date.now()) / 1000));
+  // `expo-notifications` con `TIME_INTERVAL` programa "N segundos desde ahora" contando con el
+  // reloj PROPIO del sistema operativo (irrelevante si tiene o no `clockOffsetMs` — el SO no sabe
+  // de Firestore). `fireAtIso`, en cambio, es un instante ya corregido (docs/04-SINCRONIZACION.md
+  // sección 6): restar el `Date.now()` crudo de este dispositivo introduciría exactamente el error
+  // de `clockOffsetMs` en el disparo. Restamos el "ahora" corregido para que N sea genuinamente
+  // "segundos reales que faltan", que es lo que el temporizador del SO cuenta bien de cualquier forma.
+  const nowMsValue = Date.now() + clockOffsetMs;
+  const secondsUntilFire = Math.max(1, Math.round((Date.parse(fireAtIso) - nowMsValue) / 1000));
   await Notifications.scheduleNotificationAsync({
     identifier,
     content: { title: copy.title, body: copy.body, sound: true },
@@ -86,14 +100,23 @@ async function fireImmediateAlert(sound: keyof typeof soundEffectCopy): Promise<
   });
 }
 
-/** Aplica una lista de `NotificationIntent` contra `expo-notifications`. No-op en web. */
-export async function applyNotificationIntents(sessionId: string, intents: readonly NotificationIntent[]): Promise<void> {
+/**
+ * Aplica una lista de `NotificationIntent` contra `expo-notifications`. No-op en web.
+ * `clockOffsetMs` (default `0`, docs/04-SINCRONIZACION.md sección 6) solo importa para `schedule`
+ * — corrige el "ahora" que se resta de `fireAtIso` para no heredar el error de reloj del
+ * dispositivo en el disparo de la alarma local.
+ */
+export async function applyNotificationIntents(
+  sessionId: string,
+  intents: readonly NotificationIntent[],
+  clockOffsetMs = 0
+): Promise<void> {
   if (Platform.OS === 'web') return;
 
   for (const intent of intents) {
     switch (intent.action) {
       case 'schedule':
-        await scheduleAt(sessionId, intent.purpose, intent.fireAtIso);
+        await scheduleAt(sessionId, intent.purpose, intent.fireAtIso, clockOffsetMs);
         break;
       case 'cancel':
         await cancelPurpose(sessionId, intent.purpose);
