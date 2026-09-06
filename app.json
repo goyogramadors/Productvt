@@ -36,6 +36,9 @@
         }
       ],
       "expo-audio",
+      "expo-notifications",
+      "expo-document-picker",
+      "expo-dev-client",
       "@react-native-google-signin/google-signin"
     ],
     "experiments": {

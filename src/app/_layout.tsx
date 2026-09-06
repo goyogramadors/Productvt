@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
+import { ensureNotificationPermissions } from '@/features/timer/services/timerNotificationService';
 import { useAuthStore } from '@/store/auth/authStore';
 
 SplashScreen.preventAutoHideAsync();
@@ -25,6 +26,11 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = useAuthStore.getState().initialize();
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    // Permiso de notificaciones locales (docs/03-CRONOMETRO.md sección 11): no-op en web.
+    void ensureNotificationPermissions();
   }, []);
 
   useRequireAuth();

@@ -14,9 +14,13 @@ export interface UserProfile {
   updatedAt: string;
 }
 
-/** Frase por defecto para todo perfil nuevo, editable luego desde Configuración. */
-export const DEFAULT_CANCELLATION_PHRASE =
-  '¿Seguro que quieres abandonar? Todo tu progreso de este bloque se perderá.';
+/**
+ * Frase por defecto para todo perfil nuevo, editable luego desde Configuración. Re-exportada aquí
+ * por compatibilidad con el as-built de Fase 1-2; el texto vive en `src/i18n/es.ts`
+ * (docs/02-DOMINIO.md sección 3.2, nota de vocabulario — corrige "de este bloque" a "de esta
+ * sesión"). Los perfiles ya creados conservan su frase hasta que el usuario la edite.
+ */
+export { DEFAULT_CANCELLATION_PHRASE } from '@/i18n/es';
 
 /**
  * Preferencias de sonido sincronizadas (SPEC.md secciones 28.3 y 11.4).

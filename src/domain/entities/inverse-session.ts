@@ -1,4 +1,10 @@
-/** Nombre canónico `status` por decisiones-tomadas.md punto 12. */
+import type { SessionDeviceInfo } from './study-session';
+
+/**
+ * Nombre canónico `status` por decisiones-tomadas.md punto 12. `'interrupted'` queda reservado
+ * (docs/02-DOMINIO.md sección 8, REV-MEDIA-8): ningún flujo de V1 lo produce — no hay una noción
+ * de "interrupción" distinta de cancelar, expirar por zombie o el auto-cierre en `2·T`.
+ */
 export type InverseSessionStatus = 'active' | 'completed' | 'cancelled' | 'interrupted';
 
 /**
@@ -32,6 +38,14 @@ export interface InverseSession {
   /** Nombre canónico `remindersTriggered` (no `reminderCount`) por decisiones-tomadas.md punto 11. */
   remindersTriggered: number;
   status: InverseSessionStatus;
+  /**
+   * ADICIÓN de esta fase (docs/02-DOMINIO.md sección 3.3): `true` si el cierre fue forzado por el
+   * tope `2 * targetDurationSeconds` (docs/03-CRONOMETRO.md sección 12.3), `false` en cierre manual
+   * o cancelación. Un lector que no encuentre este campo en un documento antiguo lo trata como `false`.
+   */
+  autoFinished: boolean;
+  /** ADICIÓN de esta fase: paridad con `StudySession.deviceInfo` para diagnóstico. */
+  deviceInfo?: SessionDeviceInfo;
   createdAt: string;
   updatedAt: string;
 }

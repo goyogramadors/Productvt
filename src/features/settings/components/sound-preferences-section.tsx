@@ -1,21 +1,44 @@
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radii, Spacing } from '@/constants/theme';
 import type { SoundPreferences } from '@/domain/entities/user-profile';
 import { SOUND_OPTIONS, SOUND_SLOTS, type SoundSlotKey } from '@/features/settings/domain/sound-catalog';
 import { useUserSettings } from '@/features/settings/hooks/useUserSettings';
+import {
+  clearCustomSoundUri,
+  getCustomSoundUri,
+  pickCustomSoundFile,
+  playCustomSound,
+} from '@/features/timer/services/timerAudioService';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Placeholder de preferencias de sonido (SPEC.md secciones 28.2/28.3): activar/desactivar,
- * elegir entre sonidos predefinidos por ranura, y volumen relativo. La reproducción real y la
- * importación de audio propio del dispositivo llegan en la Fase 4 (núcleo del timer).
+ * Preferencias de sonido (SPEC.md secciones 28.2/28.3): activar/desactivar, elegir entre sonidos
+ * predefinidos por ranura, volumen relativo, y audio propio del dispositivo (decisiones-tomadas.md
+ * punto 18 — Fase 4, `timerAudioService.ts`; preferencia LOCAL por dispositivo, no sincronizada).
  */
 export function SoundPreferencesSection() {
   const theme = useTheme();
   const { settings, updateSoundPreferences, isSubmitting, error } = useUserSettings();
   const preferences = settings?.soundPreferences;
+
+  const [customSoundName, setCustomSoundName] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getCustomSoundUri().then((uri) => setCustomSoundName(uri ? uri.split('/').pop() ?? uri : null));
+  }, []);
+
+  async function handlePickCustomSound() {
+    const picked = await pickCustomSoundFile();
+    if (picked) setCustomSoundName(picked.name);
+  }
+
+  async function handleClearCustomSound() {
+    await clearCustomSoundUri();
+    setCustomSoundName(null);
+  }
 
   if (!preferences) return null;
 
@@ -68,6 +91,43 @@ export function SoundPreferencesSection() {
             </View>
           ))
         : null}
+
+      {preferences.enabled && Platform.OS === 'android' ? (
+        <View style={styles.slotBlock}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Audio propio (solo este dispositivo)
+          </ThemedText>
+          <View style={styles.optionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handlePickCustomSound()}
+              style={[styles.optionChip, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="small">{customSoundName ? 'Cambiar archivo' : 'Elegir archivo'}</ThemedText>
+            </Pressable>
+            {customSoundName ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void playCustomSound(preferences.volume)}
+                  style={[styles.optionChip, { backgroundColor: theme.backgroundElement }]}>
+                  <ThemedText type="small">▶️ Probar</ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void handleClearCustomSound()}
+                  style={[styles.optionChip, { backgroundColor: theme.backgroundElement }]}>
+                  <ThemedText type="small">Quitar</ThemedText>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+          {customSoundName ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {customSoundName}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={styles.volumeRow}>
         <ThemedText type="small" themeColor="textSecondary">

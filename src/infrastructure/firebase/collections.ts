@@ -1,5 +1,6 @@
 import { collection, doc, type CollectionReference, type DocumentReference } from 'firebase/firestore';
 
+import type { ActiveSession } from '@/domain/entities/active-session';
 import type { Category } from '@/domain/entities/category';
 import type { InverseSession } from '@/domain/entities/inverse-session';
 import type { InvisibleEvent } from '@/domain/entities/invisible-event';
@@ -81,14 +82,24 @@ export function profileDocRef(uid: string): DocumentReference<UserProfile> {
 }
 
 /**
- * Documento de settings del usuario. En una fase posterior (núcleo del timer /
- * ARCHITECTURE.md sección 26.3) este mismo documento aloja además la referencia ligera a la
- * sesión de estudio activa (`activeStudySessionRef`) usada por el modelo dominante/espectador
- * (decisiones-tomadas.md puntos 14-16); esa forma extendida se tipará junto con esa fase para no
- * anticipar aquí un esquema que todavía puede cambiar.
+ * Documento de settings del usuario (`UserSettings`, sonido/visual/notificaciones). El singleton
+ * de sesión activa NO vive aquí — el comentario as-built que lo anticipaba como
+ * `activeStudySessionRef` queda superado por `activeSessionDocRef` (docs/02-DOMINIO.md sección
+ * 2.1/5.1).
  */
 export function settingsDocRef(uid: string): DocumentReference<UserSettings> {
   return doc(db, 'users', uid, 'settings', SETTINGS_DOC_ID) as DocumentReference<UserSettings>;
+}
+
+export const ACTIVE_SESSION_DOC_ID = 'session';
+
+/**
+ * Singleton `users/{uid}/active/session` (docs/02-DOMINIO.md sección 2.5/5.1): la fuente de verdad
+ * de "hay algo corriendo" para todos los dispositivos del usuario. Solo `ActiveSessionRepository`
+ * debe usar esta referencia.
+ */
+export function activeSessionDocRef(uid: string): DocumentReference<ActiveSession> {
+  return doc(db, 'users', uid, 'active', ACTIVE_SESSION_DOC_ID) as DocumentReference<ActiveSession>;
 }
 
 export { userDocRef };

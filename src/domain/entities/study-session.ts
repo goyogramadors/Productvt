@@ -1,3 +1,4 @@
+import type { DeviceId } from './active-session';
 import type { TimerStateName } from '../enums/timer-state';
 import type { PresetSnapshot } from '../value-objects/preset-snapshot';
 
@@ -12,9 +13,14 @@ export type StudySessionStatus = 'active' | 'completed' | 'cancelled' | 'expired
  * detalle para auditoría y estadísticas de abandono (SPEC.md sección 20.4) y para distinguir los
  * dos caminos de expiración: por no responder a tiempo (SPEC.md sección 19) o por sesión "zombie"
  * sin checkpoint en 24h (decisiones-tomadas.md punto 16).
+ *
+ * `'all_cycles_completed'` es as-built y queda reservado: ningún flujo V1 lo produce (la sesión no
+ * tiene número fijo de bloques). `'ended_by_user'` es la ADICIÓN de esta fase (docs/02-DOMINIO.md
+ * sección 3.3): cierre normal con "Terminar sesión" entre bloques (T7/T10 de docs/03-CRONOMETRO.md).
  */
 export type StudySessionCompletionReason =
   | 'all_cycles_completed'
+  | 'ended_by_user'
   | 'expired_no_response'
   | 'cancelled_by_user'
   | 'zombie_timeout_24h';
@@ -76,9 +82,12 @@ export interface CustomBreakSelection {
 
 /** Información opcional del dispositivo que originó la sesión (SPEC.md sección 22.2). */
 export interface SessionDeviceInfo {
+  /** 'web' incluye la PWA de escritorio (docs/02-DOMINIO.md sección 3.3). */
   platform: 'ios' | 'android' | 'web';
   deviceName?: string;
   appVersion?: string;
+  /** ADICIÓN de esta fase: correlaciona la sesión con el dispositivo dominante que la originó. */
+  deviceId?: DeviceId;
 }
 
 /**
