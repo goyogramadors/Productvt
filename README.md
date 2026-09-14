@@ -1,6 +1,8 @@
 # Productvt
 
-App para celular y desktop. Este repositorio se organiza por fases de trabajo: **actualmente estamos en fase de Mockup** — diseño visual, flujos y validación de producto — sin entrar todavía en implementación técnica ni infraestructura.
+App de estudio (cronómetro de bloques + calendario + estadísticas) para celular y desktop.
+
+**Repositorio**: https://github.com/goyogramadors/Productvt — migrado el 2026-09-14 desde el desarrollo local (`~/Desktop/Productvt`). `productvt-beta/` conserva su historial de commits original vía `git subtree` (ver el commit "fusionar historial completo de productvt-beta/").
 
 ## Estructura de carpetas
 
@@ -23,7 +25,7 @@ La fase de mockup quedó superada el 2026-09-05: el creador respondió las 24 pr
 
 - **`docs/`** — canon v2 del producto y la técnica, escrito por la sesión `productvt-90`. Empieza por `docs/00-INDICE.md` (orden de lectura por audiencia). Las decisiones transversales están en `docs/_brief-orquestador.md`; los documentos v1 originales quedan en `docs/originales/` solo como histórico.
 - **`03-requisitos/`** — canal compartido de decisiones: `preguntas-para-el-creador.md`, `decisiones-tomadas.md` (v2, con las respuestas del creador) y `revision-spec-beta.md` (revisión externa del SPEC v1). Toda decisión nueva se registra aquí primero y luego se propaga a `docs/`.
-- **`productvt-beta/`** — el código real (Expo SDK 57 + TypeScript + Firebase plan Spark). Se construye desde una sola sesión a la vez siguiendo `docs/08-PLAN-IMPLEMENTACION.md`.
+- **`productvt-beta/`** — el código real (Expo SDK 57 + TypeScript + Firebase plan Spark). Se construye desde una sola sesión a la vez siguiendo `docs/08-PLAN-IMPLEMENTACION.md`. Estado al 2026-09-14: Fases 1-4b commiteadas y cerradas (fundación, auth, categorías/presets/settings, núcleo del cronómetro con sincronización dominante/espectador); Fase 5 (sesiones e historial) con avance parcial.
 - **`00-vision/`, `01-mockups/`** — material de la sesión de frontend (formulario de decisiones, mockup HTML del cronómetro cuyos tokens son el skin base "Papel").
 
 Restricción dura del proyecto: **costo cero** (Firebase Spark, development build local en Android, web y desktop como PWA; sin EAS Build, Cloud Functions ni Storage).
