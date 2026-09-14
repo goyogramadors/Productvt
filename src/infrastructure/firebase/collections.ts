@@ -2,10 +2,9 @@ import { collection, doc, type CollectionReference, type DocumentReference } fro
 
 import type { ActiveSession } from '@/domain/entities/active-session';
 import type { Category } from '@/domain/entities/category';
-import type { InverseSession } from '@/domain/entities/inverse-session';
 import type { InvisibleEvent } from '@/domain/entities/invisible-event';
 import type { Preset } from '@/domain/entities/preset';
-import type { StudySession } from '@/domain/entities/study-session';
+import type { SessionRecord } from '@/domain/entities/session-record';
 import type { UserProfile, UserSettings } from '@/domain/entities/user-profile';
 import type { WeeklyGoal } from '@/domain/entities/weekly-goal';
 
@@ -50,8 +49,11 @@ export function presetDocRef(uid: string, presetId: string): DocumentReference<P
 /**
  * Colección única que mezcla `StudySession` e `InverseSession`, discriminadas por su campo
  * `type` (ARCHITECTURE.md sección 16.2: simplifica consultas de calendario y estadísticas).
+ * Alias de `SessionRecord` (docs/02-DOMINIO.md sección 2.3/2.4, `src/domain/entities/session-record.ts`,
+ * Fase 5): la unión vive en el dominio para que las reglas puras de historial no dependan de este
+ * archivo de infraestructura.
  */
-export type SessionDocument = StudySession | InverseSession;
+export type SessionDocument = SessionRecord;
 
 export function sessionsCollection(uid: string): CollectionReference<SessionDocument> {
   return collection(db, 'users', uid, 'sessions') as CollectionReference<SessionDocument>;
