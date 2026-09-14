@@ -1,0 +1,725 @@
+<title>Almanaque por Capas</title>
+<style>
+  :root{
+    --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
+    --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --focus: #3A6B54;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+      --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+    --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height: 100%; }
+  body{ background: var(--paper); color: var(--ink); font-family: "Archivo", ui-sans-serif, system-ui, sans-serif; }
+  button, select{ font: inherit; }
+
+  .app{ display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 760px){ .app{ grid-template-columns: 1fr; } }
+
+  /* ---- barra lateral de capas (desktop) / cajón (mobile) ---- */
+  .layers-panel{
+    border-right: 1px solid var(--rule); padding: 18px 14px; display: flex; flex-direction: column; gap: 14px;
+  }
+  @media (max-width: 760px){
+    .layers-panel{
+      position: fixed; inset: 0 20% 0 0; z-index: 40; background: var(--paper); border-right: 1px solid var(--rule-strong);
+      transform: translateX(-105%); transition: transform .25s ease; overflow-y: auto;
+    }
+    .layers-panel.open{ transform: translateX(0); box-shadow: 8px 0 24px rgba(0,0,0,.25); }
+  }
+  .layers-panel h2{ font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; margin: 0; }
+  .layer-row{ display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .layer-group-header{ font-weight: 600; margin-top: 6px; }
+  .layer-sub-row{ padding-left: 20px; font-size: 12px; color: var(--muted); }
+  .layer-sub-row .ldel{ font-family: "IBM Plex Mono", monospace; font-size: 9.5px; }
+  .assign-select{
+    font-size: 10.5px; background: var(--paper-raised); color: var(--muted); border: 1px solid var(--rule-strong);
+    border-radius: 5px; padding: 2px 4px;
+  }
+  .layer-row input[type="checkbox"]{ accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
+  .layer-row .swatch{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .layer-row .lname{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer-row .lkind{ font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--muted); }
+  .layer-row .ldel{ background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .layer-row .ldel:hover{ color: var(--danger); }
+  .add-layer{
+    display: flex; gap: 6px; margin-top: 4px;
+  }
+  .add-layer input[type="text"]{
+    flex: 1; font-size: 12.5px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 8px;
+  }
+  .add-layer input[type="color"]{ width: 30px; border: none; background: none; padding: 0; cursor: pointer; }
+  .mini-btn{
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 9px; cursor: pointer;
+  }
+  .closeLayersBtn{ display: none; }
+  @media (max-width: 760px){ .closeLayersBtn{ display: inline-block; align-self: flex-end; } }
+
+  .backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 35; display: none; }
+  .backdrop.show{ display: block; }
+
+  /* ---- barra superior: navegación, vistas, hoy ---- */
+  .main{ padding: 12px 16px 24px; min-width: 0; }
+  .search-input{
+    font-size: 12.5px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 7px; padding: 6px 10px; width: 140px;
+  }
+  .search-hit{ outline: 2px solid var(--danger); outline-offset: -1px; }
+  .topbar{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .layersToggleBtn{ display: none; }
+  @media (max-width: 760px){ .layersToggleBtn{ display: inline-flex; } }
+  .icon-btn{
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--rule-strong); background: var(--paper-raised);
+    color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .period-label{ font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 500; text-transform: capitalize; margin-right: auto; }
+  .view-switch{ display: flex; gap: 4px; border: 1px solid var(--rule-strong); border-radius: 8px; padding: 3px; }
+  .view-switch button{
+    background: none; border: none; color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-family: "IBM Plex Mono", monospace;
+  }
+  .view-switch button[aria-pressed="true"]{ background: var(--accent-soft); color: var(--accent); }
+  .pin-default{
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; background: none; color: var(--muted);
+    border: 1px dashed var(--rule-strong); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+  }
+  .pin-default.is-default{ color: var(--accent); border-color: var(--accent); border-style: solid; }
+
+  /* ---- vista año ---- */
+  .year-grid{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  @media (max-width: 1000px){ .year-grid{ grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 700px){ .year-grid{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 380px){ .year-grid{ grid-template-columns: 1fr; } }
+  .mini-month{ border: 1px solid var(--rule); border-radius: 8px; padding: 6px; cursor: pointer; }
+  .mini-month:hover{ border-color: var(--accent); }
+  .mini-month h3{ font-family: "Fraunces", Georgia, serif; font-size: 13px; font-weight: 500; margin: 0 0 6px; text-transform: capitalize; text-align: center; }
+  .mini-grid{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .mini-day{ aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8.5px; color: var(--muted); position: relative; }
+  .mini-day.has-events::after{ content: ""; position: absolute; bottom: 1px; width: 3px; height: 3px; border-radius: 50%; background: var(--accent); }
+  .mini-day.today{ background: var(--accent-soft); border-radius: 3px; color: var(--accent); }
+  .mini-day.other{ opacity: .3; }
+
+  /* ---- vista mes ---- */
+  /* min-width:0 en los items de grid evita que texto sin wrap (nowrap) fuerce el ancho de la
+     columna más allá de su 1fr — sin esto, en celular vertical el mes se corría fuera de pantalla
+     y "faltaban" días a la vista. */
+  .weekday-row{ display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
+  .weekday-row span{ min-width: 0; }
+  .month-grid{ display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .month-day{
+    min-height: 78px; min-width: 0; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper-raised);
+    padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+  }
+  .month-day:hover{ border-color: var(--accent); }
+  .month-day.other-month{ opacity: .35; }
+  .month-day.today{ border-color: var(--accent); border-width: 2px; }
+  .month-day .num{ font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+  .month-day .evt{
+    font-size: 9.5px; border-radius: 3px; padding: 1px 4px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  }
+  .month-day .more{ font-family: "IBM Plex Mono", monospace; font-size: 8.5px; color: var(--muted); }
+  @media (max-width: 480px){
+    .month-grid{ gap: 2px; }
+    .month-day{ min-height: 58px; padding: 3px; font-size: 10px; }
+    .month-day .num{ font-size: 9.5px; }
+    .month-day .evt{ font-size: 8px; padding: 0 2px; }
+  }
+  @media (max-width: 360px){
+    .month-day{ min-height: 48px; }
+    .month-day .evt{ display: none; } /* en pantallas muy chicas, el punto de "has-events" alcanza */
+    .month-day.has-events::after{ content:""; display:block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin:0 auto; }
+  }
+
+  /* ---- vistas semana/3 días/día: grilla horaria ---- */
+  .timeline{ display: grid; grid-template-columns: 44px 1fr; overflow-x: auto; }
+  .tl-hours{ display: flex; flex-direction: column; flex: none; }
+  .tl-hour-label{ height: 44px; font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--muted); text-align: right; padding-right: 6px; transform: translateY(-6px); }
+  .tl-days{ display: grid; min-width: 0; }
+  .tl-day-col{ border-left: 1px solid var(--rule); position: relative; min-width: 84px; }
+  /* en celular, sacamos el mínimo fijo para que semana/3 días entren completas sin scroll horizontal */
+  @media (max-width: 480px){
+    .timeline{ grid-template-columns: 30px 1fr; }
+    .tl-hour-label{ font-size: 8px; padding-right: 3px; }
+    .tl-day-col{ min-width: 0; }
+    .tl-day-head{ font-size: 9px; padding: 3px 0; }
+    .tl-event{ font-size: 8px; padding: 1px 2px; }
+  }
+  .tl-day-head{
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted); text-align: center; padding: 4px 0;
+    border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--paper); text-transform: capitalize;
+  }
+  .tl-day-head.today{ color: var(--accent); font-weight: 600; }
+  .tl-slot{ height: 44px; border-bottom: 1px dashed var(--rule); }
+  .tl-event{
+    position: absolute; left: 3px; right: 3px; border-radius: 5px; padding: 2px 5px; color: #fff; font-size: 10px;
+    overflow: hidden; cursor: pointer;
+  }
+  .tl-now{
+    position: absolute; left: -6px; right: 0; height: 2px; background: var(--danger); z-index: 3; pointer-events: none;
+  }
+  .tl-now::before{
+    content: ""; position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+  }
+
+  .add-fab{
+    position: fixed; right: 20px; bottom: 24px; width: 50px; height: 50px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); border: none; font-size: 22px; cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,.2); z-index: 20;
+  }
+
+  /* ---- overlays ---- */
+  .overlay{ position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+  .sheet{
+    background: var(--paper); border-top: 1px solid var(--rule); width: 100%; max-width: 460px;
+    border-radius: 18px 18px 0 0; padding: 22px 20px 26px; display: flex; flex-direction: column; gap: 12px;
+    max-height: 84vh; overflow-y: auto;
+  }
+  .sheet h2{ font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 500; margin: 0; text-transform: capitalize; }
+  .sheet .close{ align-self: flex-end; background: none; border: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
+  .item{ display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .item .idot{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .item .itxt{ flex: 1; }
+  .item .itime{ font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); }
+  .empty{ font-size: 13px; color: var(--muted); text-align: center; padding: 8px 0; }
+  .field{ display: flex; flex-direction: column; gap: 5px; }
+  .field label{ font-size: 11px; color: var(--muted); font-family: "IBM Plex Mono", monospace; }
+  .field input, .field select{
+    font-size: 13.5px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 7px; padding: 8px 10px;
+  }
+  .row2{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn{ border: none; border-radius: 9px; padding: 12px 16px; font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; background: var(--accent); color: var(--accent-ink); }
+  .note{ font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+  .choice-cards{ display: flex; flex-direction: column; gap: 10px; }
+  .choice-card{
+    display: flex; align-items: center; gap: 14px; text-align: left; border: 1px solid var(--rule-strong);
+    background: var(--paper-raised); border-radius: 10px; padding: 16px; cursor: pointer; color: var(--ink); width: 100%;
+  }
+  .choice-card:hover{ border-color: var(--accent); }
+  .choice-card .ic{ font-size: 24px; }
+  .choice-card strong{ display: block; font-family: "Fraunces", Georgia, serif; font-size: 15px; font-weight: 500; }
+  .choice-card span{ font-size: 12px; color: var(--muted); }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="app">
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="layers-panel" id="layersPanel">
+    <button class="mini-btn closeLayersBtn" id="closeLayers">cerrar ✕</button>
+    <h2>Tus capas</h2>
+    <div id="layerList"></div>
+    <div class="add-layer">
+      <input type="text" id="newLayerName" placeholder="Nueva capa (ej: Horario)">
+      <input type="color" id="newLayerColor" value="#4E6E8E">
+      <button class="mini-btn" id="addLayerBtn">+</button>
+    </div>
+    <p class="note">Una capa por cada supermeta (automática) más las que crees vos, sin relación a ninguna meta. Un evento ligado a una meta se pinta con el color de esa meta y una franja del color de su supermeta. Sin meta asociada, sigue el color de categoría de siempre.</p>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="icon-btn layersToggleBtn" id="openLayers">▤</button>
+      <button class="icon-btn" id="prevBtn">‹</button>
+      <button class="icon-btn" id="nextBtn">›</button>
+      <button class="mini-btn" id="todayBtn">Hoy</button>
+      <span class="period-label" id="periodLabel"></span>
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar…">
+      <button class="pin-default" id="pinDefaultBtn">Fijar como vista por defecto</button>
+      <div class="view-switch" id="viewSwitch">
+        <button data-view="year">Año</button>
+        <button data-view="month">Mes</button>
+        <button data-view="week">Semana</button>
+        <button data-view="3day">3 días</button>
+        <button data-view="day">Día</button>
+      </div>
+    </div>
+    <div id="viewRoot"></div>
+  </main>
+</div>
+
+<button class="add-fab" id="fabAdd" title="Agregar evento">+</button>
+<div id="sheetRoot"></div>
+
+<script>
+(function(){
+  var NAV_URLS = { inicio: "https://claude.ai/code/artifact/918a4c24-9421-4440-b696-463cca63a266" };
+  var CATS_KEY = "productvt-categorias-v1";
+  var DEFAULT_CATEGORIES = [
+    { id: "mate", name: "Matemáticas", color: "#B06A3A", type: "productiva" },
+    { id: "lectura", name: "Lectura", color: "#4E6E8E", type: "productiva" },
+    { id: "codigo", name: "Código", color: "#7A6A9E", type: "productiva" },
+    { id: "idiomas", name: "Idiomas", color: "#A85C6B", type: "productiva" }
+  ];
+  function loadCategories(){
+    try{ var raw = localStorage.getItem(CATS_KEY); return raw ? JSON.parse(raw) : DEFAULT_CATEGORIES.slice(); }
+    catch(e){ return DEFAULT_CATEGORIES.slice(); }
+  }
+  var CATEGORIES = loadCategories();
+  function catById(id){ return CATEGORIES.find(function(c){ return c.id === id; }) || CATEGORIES[0]; }
+
+  var METAS_KEY = "productvt-metas-v1";
+  function loadMetas(){ try{ var raw = localStorage.getItem(METAS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
+  function saveMetas(){ try{ localStorage.setItem(METAS_KEY, JSON.stringify(METAS)); }catch(e){} }
+  var METAS = loadMetas();
+  function metaById(id){ return METAS.find(function(m){ return m.id === id; }); }
+  function supermetas(){ return METAS.filter(function(m){ return !m.parentGoalId; }); }
+  function topOfMeta(m){ return m.parentGoalId ? metaById(m.parentGoalId) : m; }
+
+  // Capas: entidad compartida (creable desde acá o desde Inicio). Una supermeta puede enlazarse a
+  // una capa en particular (opcional) — si no, sigue siendo su propio grupo suelto ("sin capa").
+  var CAPAS_KEY = "productvt-capas-v1";
+  function loadCapas(){
+    try{ var raw = localStorage.getItem(CAPAS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+    return [{ id: "cap-uni", name: "Universidad", color: "#4E6E8E" }];
+  }
+  function saveCapas(){ try{ localStorage.setItem(CAPAS_KEY, JSON.stringify(CAPAS)); }catch(e){} }
+  var CAPAS = loadCapas();
+  function capaById(id){ return CAPAS.find(function(c){ return c.id === id; }); }
+
+  // D6.b — jerarquía de color: supermeta manda, meta hereda/edita su propio subcolor, categoría es
+  // el fallback solo para bloques "random" sin meta asociada. La capa (si la supermeta pertenece a
+  // una) se muestra como un acento aparte, no reemplaza el color de meta/supermeta.
+  function layerIdForMeta(id){
+    var m = metaById(id);
+    if(!m) return null;
+    var top = topOfMeta(m);
+    if(!top) return null;
+    return top.capaId ? "capa:"+top.capaId : "meta:"+top.id;
+  }
+  function fillColorForMeta(id){
+    var m = metaById(id);
+    return m ? (m.color || catById(m.categoryId).color) : null;
+  }
+  function stripeColorForMeta(id){
+    var m = metaById(id);
+    if(!m || !m.parentGoalId) return null; // sin supermeta, no hay franja secundaria
+    var parent = metaById(m.parentGoalId);
+    return parent ? (parent.color || catById(parent.categoryId).color) : null;
+  }
+  function capaColorForMeta(id){
+    var m = metaById(id);
+    if(!m) return null;
+    var top = topOfMeta(m);
+    return (top && top.capaId && capaById(top.capaId)) ? capaById(top.capaId).color : null;
+  }
+
+  var VIS_KEY = "productvt-calendario-capas-visibles-v1";
+  function loadVis(){ try{ var raw = localStorage.getItem(VIS_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+  function saveVis(){ try{ localStorage.setItem(VIS_KEY, JSON.stringify(layerVis)); }catch(e){} }
+  var layerVis = loadVis();
+  function isVisible(layerId){ return layerVis[layerId] !== false; }
+
+  var EVENTS_KEY = "productvt-calendario-invisibles-v1";
+  function loadUserEvents(){ try{ var raw = localStorage.getItem(EVENTS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
+  function saveUserEvents(){ try{ localStorage.setItem(EVENTS_KEY, JSON.stringify(userEvents)); }catch(e){} }
+  var userEvents = loadUserEvents();
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function iso(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
+  function isoOf(d){ return iso(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function addDays(d,n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
+  function startOfWeek(d){ var day=(d.getDay()+6)%7; return addDays(d,-day); }
+  function minutesToHHMM(totalMin){ var h=Math.floor(totalMin/60), m=totalMin%60; return pad(h)+":"+pad(m); }
+
+  var today = new Date();
+
+  // ---- Sesiones/eventos de ejemplo, deterministas por mes (año completo, capa = meta cuando comparte categoría) ----
+  var STATUSES = ["completed","completed","completed","cancelled","expired"];
+  function sessionsForMonth(year, month){
+    var out = [];
+    var daysInMonth = new Date(year, month+1, 0).getDate();
+    for(var d=1; d<=daysInMonth; d++){
+      var seed = (d*7+month) % 10;
+      if(seed < 6){
+        var cat = CATEGORIES[(d+seed) % CATEGORIES.length];
+        var status = STATUSES[(d+seed) % STATUSES.length];
+        var minutes = status === "completed" ? [25,50,75,100][d%4] : [10,15,20][d%3];
+        var startH = 8 + (d % 10);
+        // liga al bloque una meta de esa categoría si existe — prefiere una meta hoja (más específica)
+        // sobre la propia supermeta, simulando "el usuario eligió esta meta al iniciar el bloque"
+        var candidates = METAS.filter(function(m){ return m.categoryId === cat.id; });
+        var linkedMeta = candidates.find(function(m){ return m.parentGoalId; }) || candidates[0];
+        out.push({
+          id: "s"+year+"-"+month+"-"+d+"-1", date: iso(year,month,d), categoryId: cat.id, status: status, minutes: minutes,
+          startMin: startH*60 + (d%2===0?0:30), metaId: linkedMeta ? linkedMeta.id : null, title: linkedMeta ? linkedMeta.name : cat.name
+        });
+      }
+      if(seed === 7){
+        var cat2 = CATEGORIES[(d+2) % CATEGORIES.length];
+        var candidates2 = METAS.filter(function(m){ return m.categoryId === cat2.id; });
+        var linkedMeta2 = candidates2.find(function(m){ return m.parentGoalId; }) || candidates2[0];
+        out.push({
+          id: "s"+year+"-"+month+"-"+d+"-2", date: iso(year,month,d), categoryId: cat2.id, status: "completed", minutes: 25,
+          startMin: (15+(d%4))*60, metaId: linkedMeta2 ? linkedMeta2.id : null, title: linkedMeta2 ? linkedMeta2.name : cat2.name
+        });
+      }
+    }
+    return out;
+  }
+  var demoCache = {};
+  function demoForMonth(year, month){
+    var key = year+"-"+month;
+    if(!demoCache[key]) demoCache[key] = sessionsForMonth(year, month);
+    return demoCache[key];
+  }
+  function eventsForRange(fromDate, toDate){
+    var out = [];
+    var cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+    var endMonth = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
+    while(cursor <= endMonth){
+      out = out.concat(demoForMonth(cursor.getFullYear(), cursor.getMonth()));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+    }
+    var fromIso = isoOf(fromDate), toIso = isoOf(toDate);
+    var sessions = out.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
+    var custom = userEvents.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
+    return sessions.concat(custom).filter(function(e){
+      if(e.metaId) return isVisible(layerIdForMeta(e.metaId));
+      if(e.capaId) return isVisible("capa:"+e.capaId);
+      return true;
+    });
+  }
+  function colorForEvent(e){
+    if(e.metaId){ var c = fillColorForMeta(e.metaId); if(c) return c; }
+    if(e.capaId){ var cp = capaById(e.capaId); if(cp) return cp.color; }
+    return catById(e.categoryId).color;
+  }
+  function stripeForEvent(e){
+    return e.metaId ? stripeColorForMeta(e.metaId) : null;
+  }
+  function capaAccentForEvent(e){
+    if(e.metaId) return capaColorForMeta(e.metaId);
+    return null; // un evento tageado directo a una capa ya usa esa capa como su color principal
+  }
+  function labelForEvent(e){ return e.title || (e.categoryId ? catById(e.categoryId).name : "Evento"); }
+
+  // ---- estado de la vista ----
+  var DEFAULT_VIEW_KEY = "productvt-calendario-vista-default-v1";
+  function loadDefaultView(){ try{ return localStorage.getItem(DEFAULT_VIEW_KEY) || "month"; }catch(e){ return "month"; } }
+  var view = loadDefaultView();
+  var cursorDate = new Date();
+  var searchQuery = "";
+  function matchesSearch(e){
+    if(!searchQuery) return false;
+    return labelForEvent(e).toLowerCase().indexOf(searchQuery) !== -1;
+  }
+  function dayHasMatch(dateStr){
+    if(!searchQuery) return false;
+    return eventsForRange(new Date(dateStr+"T00:00:00"), new Date(dateStr+"T00:00:00")).some(matchesSearch);
+  }
+
+  var viewRoot = document.getElementById("viewRoot");
+  var periodLabel = document.getElementById("periodLabel");
+  var layersPanel = document.getElementById("layersPanel");
+  var backdrop = document.getElementById("backdrop");
+  var MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var WEEKDAYS = ["L","M","M","J","V","S","D"];
+
+  function setView(v){
+    view = v;
+    document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.view===v); });
+    document.getElementById("pinDefaultBtn").classList.toggle("is-default", loadDefaultView() === v);
+    render();
+  }
+
+  function renderLayers(){
+    var list = document.getElementById("layerList");
+    list.innerHTML = "";
+    var sinCapa = supermetas().filter(function(m){ return !m.capaId; });
+
+    CAPAS.forEach(function(cp){
+      var key = "capa:"+cp.id;
+      var head = document.createElement("div");
+      head.className = "layer-row layer-group-header";
+      head.innerHTML = '<input type="checkbox" '+(isVisible(key)?"checked":"")+'><span class="swatch" style="background:'+cp.color+'"></span>' +
+        '<span class="lname">'+cp.name+'</span><button class="ldel" title="Borrar capa">×</button>';
+      head.querySelector('input').addEventListener("change", function(e){ layerVis[key] = e.target.checked; saveVis(); render(); });
+      head.querySelector('.ldel').addEventListener("click", function(){
+        if(!confirm('¿Borrar la capa "'+cp.name+'"? Las supermetas asignadas quedan sin capa.')) return;
+        METAS.forEach(function(m){ if(m.capaId === cp.id) delete m.capaId; });
+        saveMetas();
+        CAPAS = CAPAS.filter(function(c){ return c.id !== cp.id; });
+        saveCapas(); renderLayers(); render();
+      });
+      list.appendChild(head);
+
+      supermetas().filter(function(m){ return m.capaId === cp.id; }).forEach(function(m){
+        var sub = document.createElement("div");
+        sub.className = "layer-row layer-sub-row";
+        sub.innerHTML = '<span class="swatch" style="background:'+(m.color||catById(m.categoryId).color)+'"></span>' +
+          '<span class="lname">'+m.name+'</span><button class="ldel" title="Quitar de esta capa">quitar</button>';
+        sub.querySelector('.ldel').addEventListener("click", function(){
+          delete m.capaId; saveMetas(); renderLayers(); render();
+        });
+        list.appendChild(sub);
+      });
+    });
+
+    if(sinCapa.length){
+      var hr = document.createElement("p");
+      hr.className = "note"; hr.style.margin = "6px 0 0"; hr.textContent = "Sin capa";
+      list.appendChild(hr);
+      sinCapa.forEach(function(m){
+        var key = "meta:"+m.id;
+        var row = document.createElement("div");
+        row.className = "layer-row";
+        row.innerHTML = '<input type="checkbox" '+(isVisible(key)?"checked":"")+'><span class="swatch" style="background:'+(m.color||catById(m.categoryId).color)+'"></span>' +
+          '<span class="lname">'+m.name+'</span>' +
+          '<select class="assign-select">' + '<option value="">a capa…</option>' + CAPAS.map(function(c){ return '<option value="'+c.id+'">'+c.name+'</option>'; }).join("") + '</select>';
+        row.querySelector('input').addEventListener("change", function(e){ layerVis[key] = e.target.checked; saveVis(); render(); });
+        row.querySelector('.assign-select').addEventListener("change", function(e){
+          if(!e.target.value) return;
+          m.capaId = e.target.value; saveMetas(); renderLayers(); render();
+        });
+        list.appendChild(row);
+      });
+    }
+  }
+
+  function render(){
+    if(view === "year") renderYear();
+    else if(view === "month") renderMonth();
+    else if(view === "week") renderTimeline(7);
+    else if(view === "3day") renderTimeline(3);
+    else renderTimeline(1);
+  }
+
+  function renderYear(){
+    var y = cursorDate.getFullYear();
+    periodLabel.textContent = y;
+    var html = '<div class="year-grid">';
+    for(var m=0; m<12; m++){
+      var evts = eventsForRange(new Date(y,m,1), new Date(y,m+1,0));
+      var byDate = {}; evts.forEach(function(e){ byDate[e.date]=true; });
+      var first = new Date(y,m,1); var offset=(first.getDay()+6)%7;
+      var days = new Date(y,m+1,0).getDate();
+      html += '<div class="mini-month" data-month="'+m+'"><h3>'+MONTHS[m]+'</h3><div class="mini-grid">';
+      for(var i=0;i<offset;i++) html += '<span class="mini-day other"></span>';
+      for(var d=1; d<=days; d++){
+        var ds = iso(y,m,d);
+        var isToday = ds === isoOf(today);
+        html += '<span class="mini-day'+(byDate[ds]?" has-events":"")+(isToday?" today":"")+(dayHasMatch(ds)?" search-hit":"")+'" data-date="'+ds+'">'+d+'</span>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+    viewRoot.innerHTML = html;
+    document.querySelectorAll(".mini-month").forEach(function(el){
+      el.addEventListener("click", function(ev){
+        var dateEl = ev.target.closest(".mini-day[data-date]");
+        cursorDate = new Date(y, Number(el.dataset.month), dateEl ? Number(dateEl.dataset.date.slice(-2)) : 1);
+        setView(dateEl ? "day" : "month");
+      });
+    });
+  }
+
+  function renderMonth(){
+    var y = cursorDate.getFullYear(), m = cursorDate.getMonth();
+    periodLabel.textContent = MONTHS[m] + " " + y;
+    var first = new Date(y,m,1); var offset=(first.getDay()+6)%7;
+    var daysInMonth = new Date(y,m+1,0).getDate();
+    var daysInPrev = new Date(y,m,0).getDate();
+    var cells = [];
+    for(var i=offset; i>0; i--) cells.push({ day: daysInPrev-i+1, other: true, y: m===0?y-1:y, m: m===0?11:m-1 });
+    for(var d=1; d<=daysInMonth; d++) cells.push({ day: d, other: false, y:y, m:m });
+    while(cells.length % 7 !== 0){ var idx = cells.length-(offset+daysInMonth); cells.push({ day: idx+1, other: true, y: m===11?y+1:y, m: m===11?0:m+1 }); }
+    var html = '<div class="weekday-row">'+WEEKDAYS.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div><div class="month-grid">';
+    cells.forEach(function(c){
+      var ds = iso(c.y,c.m,c.day);
+      var isToday = ds === isoOf(today);
+      var evts = eventsForRange(new Date(ds), new Date(ds));
+      var shown = evts.slice(0,3);
+      html += '<div class="month-day'+(c.other?" other-month":"")+(isToday?" today":"")+(evts.length?" has-events":"")+(dayHasMatch(ds)?" search-hit":"")+'" data-date="'+ds+'">' +
+        '<span class="num">'+c.day+'</span>' +
+        shown.map(function(e){
+          var stripe = stripeForEvent(e);
+          var st = "background:"+colorForEvent(e) + (stripe ? ";border-left:3px solid "+stripe+";padding-left:3px" : "");
+          var capaColor = capaAccentForEvent(e);
+          var accent = capaColor ? ' <i style="display:inline-block;width:5px;height:5px;border-radius:50%;background:'+capaColor+';vertical-align:middle"></i>' : '';
+          return '<span class="evt" style="'+st+'">'+labelForEvent(e)+accent+'</span>';
+        }).join("") +
+        (evts.length>3 ? '<span class="more">+'+(evts.length-3)+' más</span>' : "") +
+        '</div>';
+    });
+    html += '</div>';
+    viewRoot.innerHTML = html;
+    document.querySelectorAll(".month-day").forEach(function(el){
+      el.addEventListener("click", function(){ openDaySheet(el.dataset.date); });
+    });
+  }
+
+  function renderTimeline(numDays){
+    var start = numDays === 7 ? startOfWeek(cursorDate) : (numDays===3 ? addDays(cursorDate,-1) : cursorDate);
+    var days = []; for(var i=0;i<numDays;i++) days.push(addDays(start,i));
+    periodLabel.textContent = numDays===1
+      ? days[0].toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})
+      : days[0].getDate()+" "+MONTHS[days[0].getMonth()].slice(0,3)+" – "+days[numDays-1].getDate()+" "+MONTHS[days[numDays-1].getMonth()].slice(0,3);
+
+    var startHour = 7, endHour = 23;
+    var hourLabels = "";
+    for(var h=startHour; h<=endHour; h++) hourLabels += '<div class="tl-hour-label">'+pad(h)+":00</div>";
+
+    var colsHtml = "";
+    days.forEach(function(d){
+      var ds = isoOf(d);
+      var evts = eventsForRange(d,d).filter(function(e){ return e.startMin !== undefined || e.time; });
+      var isToday = ds === isoOf(today);
+      var slots = ""; for(var h=startHour; h<=endHour; h++) slots += '<div class="tl-slot" data-hour="'+h+'"></div>';
+      var eventsHtml = evts.map(function(e){
+        var startMin = e.startMin !== undefined ? e.startMin : (e.time ? Number(e.time.split(":")[0])*60+Number(e.time.split(":")[1]) : startHour*60);
+        var dur = e.minutes || 25;
+        var top = (startMin - startHour*60) / 60 * 44;
+        var height = Math.max(20, dur/60*44);
+        var stripe2 = stripeForEvent(e);
+        var evStyle = "top:"+top+"px;height:"+height+"px;background:"+colorForEvent(e) + (stripe2 ? ";border-left:4px solid "+stripe2 : "");
+        var capaColor2 = capaAccentForEvent(e);
+        var accent2 = capaColor2 ? '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:'+capaColor2+'"></span>' : '';
+        return '<div class="tl-event'+(matchesSearch(e)?" search-hit":"")+'" data-id="'+e.id+'" style="'+evStyle+'" title="'+labelForEvent(e)+'">'+labelForEvent(e)+' · '+minutesToHHMM(startMin)+accent2+'</div>';
+      }).join("");
+      var nowLine = "";
+      if(isToday){
+        var nowMin = today.getHours()*60 + today.getMinutes();
+        if(nowMin >= startHour*60 && nowMin <= endHour*60){
+          var nowTop = (nowMin - startHour*60) / 60 * 44;
+          nowLine = '<div class="tl-now" id="tlNow" style="top:'+nowTop+'px"></div>';
+        }
+      }
+      colsHtml += '<div class="tl-day-col" data-date="'+ds+'">' +
+        '<div class="tl-day-head'+(isToday?" today":"")+'">'+WEEKDAYS[(d.getDay()+6)%7]+' '+d.getDate()+'</div>' +
+        '<div style="position:relative">'+slots+eventsHtml+nowLine+'</div></div>';
+    });
+
+    viewRoot.innerHTML = '<div class="timeline"><div class="tl-hours"><div class="tl-hour-label" style="height:26px"></div>'+hourLabels+'</div>' +
+      '<div class="tl-days" style="grid-template-columns:repeat('+numDays+',1fr)">' + colsHtml + '</div></div>';
+
+    viewRoot.querySelectorAll(".tl-day-col").forEach(function(col){
+      col.addEventListener("click", function(ev){
+        if(ev.target.closest(".tl-event")) return;
+        openDaySheet(col.dataset.date);
+      });
+    });
+  }
+
+  function openDaySheet(dateStr){
+    var d = new Date(dateStr+"T00:00:00");
+    var evts = eventsForRange(d,d);
+    var itemsHtml = evts.length ? evts.map(function(e){
+      var stripe = stripeForEvent(e);
+      var dotStyle = "background:"+colorForEvent(e) + (stripe ? ";box-shadow:0 0 0 2px "+stripe : "");
+      return '<div class="item"><span class="idot" style="'+dotStyle+'"></span>' +
+        '<span class="itxt">'+labelForEvent(e)+(e.minutes?" · "+e.minutes+" min":"")+'</span>' +
+        '<span class="itime">'+(e.startMin!==undefined?minutesToHHMM(e.startMin):(e.time||""))+'</span></div>';
+    }).join("") : '<p class="empty">Nada este día.</p>';
+    var metaOptions = METAS.map(function(m){ return '<option value="meta:'+m.id+'">'+(m.parentGoalId?"— ":"")+m.name+'</option>'; }).join("");
+    var capaOptions = CAPAS.map(function(l){ return '<option value="capa:'+l.id+'">'+l.name+' (capa)</option>'; }).join("");
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeDay">cerrar</button>' +
+      '<h2>'+d.toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})+'</h2>' +
+      itemsHtml +
+      '<div class="field"><label>Nuevo evento</label><input type="text" id="evTitle" placeholder="Título"></div>' +
+      '<div class="row2"><div class="field"><label>Meta o capa</label><select id="evMeta"><option value="">Sin meta/capa</option>' +
+      (metaOptions ? '<optgroup label="Metas">'+metaOptions+'</optgroup>' : '') +
+      (capaOptions ? '<optgroup label="Capas">'+capaOptions+'</optgroup>' : '') + '</select></div>' +
+      '<div class="field"><label>Hora</label><input type="time" id="evTime" value="09:00"></div></div>' +
+      '<button class="btn" id="addEvBtn">+ Agregar</button>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.querySelector("#closeDay").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#addEvBtn").addEventListener("click", function(){
+      var title = wrap.querySelector("#evTitle").value.trim();
+      if(!title) return;
+      var time = wrap.querySelector("#evTime").value;
+      var sel = wrap.querySelector("#evMeta").value;
+      userEvents.push({
+        id: "u"+Date.now(), date: dateStr, title: title,
+        metaId: sel.indexOf("meta:")===0 ? sel.slice(5) : null,
+        capaId: sel.indexOf("capa:")===0 ? sel.slice(5) : null,
+        time: time, startMin: Number(time.split(":")[0])*60+Number(time.split(":")[1])
+      });
+      saveUserEvents(); wrap.remove(); render(); openDaySheet(dateStr);
+    });
+  }
+
+  // ---- navegación ----
+  function step(dir){
+    if(view==="year") cursorDate = new Date(cursorDate.getFullYear()+dir, cursorDate.getMonth(), 1);
+    else if(view==="month") cursorDate = new Date(cursorDate.getFullYear(), cursorDate.getMonth()+dir, 1);
+    else if(view==="week") cursorDate = addDays(cursorDate, dir*7);
+    else if(view==="3day") cursorDate = addDays(cursorDate, dir*3);
+    else cursorDate = addDays(cursorDate, dir);
+    render();
+  }
+  document.getElementById("prevBtn").addEventListener("click", function(){ step(-1); });
+  document.getElementById("nextBtn").addEventListener("click", function(){ step(1); });
+  document.getElementById("todayBtn").addEventListener("click", function(){ cursorDate = new Date(); render(); });
+  document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.addEventListener("click", function(){ setView(b.dataset.view); }); });
+
+  document.getElementById("pinDefaultBtn").addEventListener("click", function(){
+    try{ localStorage.setItem(DEFAULT_VIEW_KEY, view); }catch(e){}
+    document.getElementById("pinDefaultBtn").classList.add("is-default");
+  });
+
+  document.getElementById("addLayerBtn").addEventListener("click", function(){
+    var name = document.getElementById("newLayerName").value.trim();
+    if(!name) return;
+    var color = document.getElementById("newLayerColor").value;
+    CAPAS.push({ id: "cap"+Date.now(), name: name, color: color });
+    saveCapas(); document.getElementById("newLayerName").value = "";
+    renderLayers(); render();
+  });
+
+  function openFabPopup(){
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeFab">cerrar</button>' +
+      '<h2>¿Qué querés hacer?</h2>' +
+      '<div class="choice-cards">' +
+        '<button class="choice-card" id="goEventHere" type="button"><span class="ic">▦</span><span><strong>Agregar evento a este día</strong><span>'+cursorDate.toLocaleDateString("es",{day:"numeric",month:"long"})+'</span></span></button>' +
+        '<button class="choice-card" id="goCreateFromCal" type="button"><span class="ic">✺</span><span><strong>Crear meta / iniciar bloque</strong><span>Abre el mismo panel de Inicio</span></span></button>' +
+      '</div></div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.querySelector("#closeFab").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#goEventHere").addEventListener("click", function(){ wrap.remove(); openDaySheet(isoOf(cursorDate)); });
+    wrap.querySelector("#goCreateFromCal").addEventListener("click", function(){ window.location.href = NAV_URLS.inicio + "?action=create"; });
+  }
+  document.getElementById("fabAdd").addEventListener("click", openFabPopup);
+  document.getElementById("searchInput").addEventListener("input", function(e){
+    searchQuery = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  function openLayersPanel(){ layersPanel.classList.add("open"); backdrop.classList.add("show"); }
+  function closeLayersPanel(){ layersPanel.classList.remove("open"); backdrop.classList.remove("show"); }
+  document.getElementById("openLayers").addEventListener("click", openLayersPanel);
+  document.getElementById("closeLayers").addEventListener("click", closeLayersPanel);
+  backdrop.addEventListener("click", closeLayersPanel);
+
+  document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.view===view); });
+  document.getElementById("pinDefaultBtn").classList.toggle("is-default", loadDefaultView() === view);
+  renderLayers();
+  render();
+
+  setInterval(function(){
+    var line = document.getElementById("tlNow");
+    if(!line) return;
+    var startHour = 7;
+    var nowMin = new Date().getHours()*60 + new Date().getMinutes();
+    line.style.top = ((nowMin - startHour*60) / 60 * 44) + "px";
+  }, 30000);
+})();
+</script>

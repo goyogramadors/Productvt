@@ -1,0 +1,1223 @@
+<title>Ciclo de Estudio</title>
+<style>
+  :root{
+    --paper: #EFEDE5;
+    --paper-raised: #FAF9F3;
+    --ink: #20241E;
+    --muted: #6E7368;
+    --accent: #3A6B54;
+    --accent-ink: #F3F7F1;
+    --accent-soft: #DCE6DC;
+    --rule: #D5D1C1;
+    --rule-strong: #B9B4A0;
+    --break: #2E7B84;
+    --break-soft: #D8E6E7;
+    --lunch: #B9812E;
+    --lunch-soft: #EFE1C6;
+    --ocio: #6B8F71;
+    --warn: #C0672B;
+    --danger: #9C4A3A;
+    --danger-soft: #E9D6CF;
+    --focus: #3A6B54;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F;
+      --paper-raised: #1B1F16;
+      --ink: #E9E7DC;
+      --muted: #949A88;
+      --accent: #7BB596;
+      --accent-ink: #10241A;
+      --accent-soft: #223429;
+      --rule: #2B3225;
+      --rule-strong: #3C4433;
+      --break: #6FB9C2;
+      --break-soft: #1D3538;
+      --lunch: #D9A85C;
+      --lunch-soft: #362A16;
+      --ocio: #94C79B;
+      --warn: #E08B52;
+      --danger: #D08871;
+      --danger-soft: #33221D;
+      --focus: #7BB596;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+    --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+    --rule: #2B3225; --rule-strong: #3C4433;
+    --break: #6FB9C2; --break-soft: #1D3538; --lunch: #D9A85C; --lunch-soft: #362A16;
+    --ocio: #94C79B;
+    --warn: #E08B52; --danger: #D08871; --danger-soft: #33221D; --focus: #7BB596;
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button{ font: inherit; }
+
+  .shell{
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 24px;
+  }
+
+  .topbar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 8px;
+  }
+  .topbar .title{
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .role-pill{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink);
+  }
+  .role-pill .dot{ width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .role-pill.spectator .dot{ background: var(--muted); }
+
+  .stage{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 24px 28px;
+    text-align: center;
+  }
+
+  .state-label{
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 23px;
+    font-weight: 480;
+    text-wrap: balance;
+  }
+  .helper{
+    font-size: 13.5px;
+    color: var(--muted);
+    max-width: 34ch;
+    line-height: 1.5;
+  }
+  .helper.stakes{ color: var(--warn); }
+  .editing-tag{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+
+  .cat-chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .cat-chip .swatch{ width: 9px; height: 9px; border-radius: 50%; }
+
+  .ring-wrap{ position: relative; width: 240px; height: 240px; }
+  .ring-wrap svg{ transform: rotate(-90deg); width: 100%; height: 100%; }
+  .ring-track{ fill: none; stroke: var(--rule); stroke-width: 8; }
+  .ring-mark{ fill: none; stroke: var(--rule-strong); stroke-width: 2; stroke-dasharray: 1 5; }
+  .ring-fill{ fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .3s linear, stroke .3s ease; }
+  .ring-center{
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  }
+  .clock{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 42px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .clock-sub{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+
+  .type-toggle{ display: flex; gap: 8px; justify-content: center; width: 100%; }
+  .type-btn{
+    flex: 1; border: 1px solid var(--rule-strong); background: var(--paper-raised); color: var(--muted);
+    border-radius: 10px; padding: 10px; cursor: pointer; font-size: 13px;
+  }
+  .type-btn strong{ display: block; font-family: "Fraunces", Georgia, serif; font-size: 15px; color: var(--ink); font-weight: 500; }
+  .type-btn[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); }
+  .type-btn[aria-pressed="true"] strong{ color: var(--accent); }
+
+  .choices{ display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .choice{
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    color: var(--ink);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 13.5px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .choice[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); }
+  .choice .swatch{ width: 9px; height: 9px; border-radius: 50%; }
+  .choice:disabled{ opacity: .45; cursor: not-allowed; }
+  .choice.preset{ padding-right: 24px; position: relative; }
+  .choice.add-cat{ border-style: dashed; color: var(--muted); }
+  .choice .preset-x{
+    position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; line-height: 1; color: var(--muted);
+  }
+  .choice .preset-x:hover{ color: var(--danger); }
+
+  .new-cat-form{
+    display: flex; flex-direction: column; gap: 10px; width: 100%;
+    border: 1px solid var(--rule-strong); border-radius: 10px; padding: 12px;
+    background: var(--paper-raised);
+  }
+  .new-cat-form input[type="text"]{
+    font-family: "Archivo", sans-serif; font-size: 13.5px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 8px; padding: 9px 11px;
+  }
+  .palette{ display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .palette button{
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0;
+  }
+  .palette button[aria-pressed="true"]{ border-color: var(--ink); }
+  .palette-more{
+    width: 22px; height: 22px; border-radius: 50%; position: relative; overflow: hidden; cursor: pointer;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    border: 2px solid transparent; flex: none;
+  }
+  .palette-more.active{ border-color: var(--ink); }
+  .palette-more input[type="color"]{
+    position: absolute; inset: -6px; opacity: 0; cursor: pointer; border: none; padding: 0;
+  }
+  .new-cat-actions{ display: flex; gap: 8px; }
+  .new-cat-actions .mini-btn{ flex: 1; }
+
+  .settings-block{ display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .settings-group{
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 12.5px; color: var(--muted);
+    border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px;
+  }
+  .settings-group .grow{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .settings-group .glabel{ color: var(--ink); }
+  .settings-group .gcontrols{ display: flex; align-items: center; gap: 6px; }
+  .settings-group select{
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
+    background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 4px 6px;
+  }
+
+  .time-chips{ display: flex; flex-wrap: wrap; gap: 6px; }
+  .tchip{
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
+    border: 1px solid var(--rule-strong); background: var(--paper-raised); color: var(--ink);
+    border-radius: 14px; padding: 5px 10px; cursor: pointer; position: relative;
+  }
+  .tchip[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .tchip.custom{ padding-right: 20px; }
+  .tchip.add{ border-style: dashed; color: var(--muted); }
+  .tchip-x{ position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+  .tchip-x:hover{ color: var(--danger); }
+
+  .custom-time-row{ display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .custom-time-row input[type="number"]{
+    width: 66px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px;
+    background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 5px 7px;
+  }
+  .ct-check{ display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
+
+  .save-row{ display: flex; gap: 8px; width: 100%; }
+  .save-row input{
+    flex: 1; font-family: "Archivo", ui-sans-serif, sans-serif; font-size: 13.5px;
+    background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 8px; padding: 10px 12px;
+  }
+  .save-row input:focus-visible{ outline: 2px solid var(--focus); outline-offset: 1px; }
+  .mini-btn{
+    font-family: "Archivo", ui-sans-serif, sans-serif; font-size: 13px;
+    background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 8px; padding: 10px 12px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .mini-btn.ghost{ background: none; border-color: transparent; color: var(--muted); }
+  .save-actions{ display: flex; gap: 14px; align-items: center; justify-content: center; }
+
+  .actions{ display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 4px; }
+  .btn{
+    border: none;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+  }
+  .btn.primary{ background: var(--accent); color: var(--accent-ink); }
+  .btn.secondary{ background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong); }
+  .btn.ghost{ background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 8px; }
+  .btn.danger-ghost{ background: none; color: var(--danger); text-decoration: underline; text-underline-offset: 3px; padding: 8px; }
+  .btn:focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn:disabled{ opacity: .5; cursor: not-allowed; }
+
+  /* overlays */
+  .overlay{
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.35);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 30;
+  }
+  .sheet{
+    background: var(--paper); border-top: 1px solid var(--rule);
+    width: 100%; max-width: 420px;
+    border-radius: 18px 18px 0 0;
+    padding: 24px 22px 26px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .sheet h2{ font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 500; margin: 0; }
+  .sheet p{ font-size: 14px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  /* demo drawer */
+  .demo{
+    margin-top: auto;
+    border-top: 1px dashed var(--rule-strong);
+    padding: 10px 20px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  .demo summary{
+    cursor: pointer; font-size: 11px; color: var(--muted);
+    padding: 6px 0;
+  }
+  .demo-body{ display: flex; flex-direction: column; gap: 10px; padding: 8px 0 2px; }
+  .demo-row{ display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--muted); }
+  .demo select{
+    font-family: inherit; font-size: 11.5px; background: var(--paper-raised);
+    color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 4px 6px;
+  }
+  .demo button.mini{
+    font-family: inherit; font-size: 11px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+  }
+  .note{
+    font-size: 10.5px; color: var(--muted); line-height: 1.5; margin-top: 2px;
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="shell">
+  <div class="topbar">
+    <span class="title" id="topTitle">Cronómetro</span>
+    <span class="role-pill" id="rolePill"><span class="dot"></span><span id="roleLabel">Dominante</span></span>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <details class="demo">
+    <summary>Panel de prueba — no es parte de la app</summary>
+    <div class="demo-body">
+      <div class="demo-row">
+        <span>Velocidad del reloj</span>
+        <select id="speedSelect">
+          <option value="1">1×</option>
+          <option value="10">10×</option>
+          <option value="30" selected>30×</option>
+          <option value="60">60×</option>
+        </select>
+      </div>
+      <div class="demo-row">
+        <span>Ciclos desde el último almuerzo: <b id="lunchCounter">0</b></span>
+        <button class="mini" id="resetLunch" type="button">reiniciar</button>
+      </div>
+      <div class="demo-row">
+        <span>Otro dispositivo</span>
+        <button class="mini" id="simConflict" type="button">pedir el control</button>
+      </div>
+      <div class="demo-row">
+        <span>Saltar</span>
+        <button class="mini" id="skipTimer" type="button">al final del conteo actual</button>
+      </div>
+      <p class="note">Duraciones reales corren aceleradas para poder probar el flujo completo. Máquina de estados y reglas (ventanas por tamaño/posición de ciclo, banco de descanso, doble confirmación de 15+15s con carrera contra la ventana, almuerzo con pausa/reanudación exacta) siguen docs/03-CRONOMETRO.md. Categorías: se pueden crear desde acá; en la app real viven en un solo lugar compartido con Calendario/Estadísticas.</p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function(){
+  var DEFAULT_CATEGORIES = [
+    { id: "mate", name: "Matemáticas", color: "#B06A3A", type: "productiva" },
+    { id: "lectura", name: "Lectura", color: "#4E6E8E", type: "productiva" },
+    { id: "codigo", name: "Código", color: "#7A6A9E", type: "productiva" },
+    { id: "idiomas", name: "Idiomas", color: "#A85C6B", type: "productiva" },
+    { id: "pantalla", name: "Pausa de pantalla", color: "#6B8F71", type: "ocio" },
+    { id: "ejercicio", name: "Ejercicio", color: "#C97A2B", type: "ocio" },
+    { id: "social", name: "Social", color: "#8A6FA3", type: "ocio" }
+  ];
+  var PALETTE = ["#B06A3A","#4E6E8E","#7A6A9E","#A85C6B","#6B8F71","#C97A2B","#8A6FA3","#3A6B54","#9C4A3A","#2E7B84"];
+  var CATS_KEY = "productvt-categorias-v1";
+  var LAST_COLOR_KEY = "productvt-ultimo-color-v1";
+  function loadLastColor(){ try{ return localStorage.getItem(LAST_COLOR_KEY); }catch(e){ return null; } }
+  function saveLastColor(c){ try{ localStorage.setItem(LAST_COLOR_KEY, c); }catch(e){} }
+  var lastColor = loadLastColor();
+  function orderedPalette(){
+    if(!lastColor) return PALETTE.slice();
+    return [lastColor].concat(PALETTE.filter(function(c){ return c !== lastColor; }));
+  }
+
+  function loadCategories(){
+    try{ var raw = localStorage.getItem(CATS_KEY); return raw ? JSON.parse(raw) : DEFAULT_CATEGORIES.slice(); }
+    catch(e){ return DEFAULT_CATEGORIES.slice(); }
+  }
+  function saveCategories(){ try{ localStorage.setItem(CATS_KEY, JSON.stringify(CATEGORIES)); }catch(e){} }
+  var CATEGORIES = loadCategories();
+  function categoriesOf(type){ return CATEGORIES.filter(function(c){ return c.type === type; }); }
+  function typeForMode(mode){ return mode === "inverso" ? "ocio" : "productiva"; }
+
+  // D6.b: si el bloque está ligado a una meta, su color manda sobre el de categoría en esta pantalla
+  var METAS_KEY = "productvt-metas-v1";
+  function loadMetas(){ try{ var raw = localStorage.getItem(METAS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
+  var METAS = loadMetas();
+  function metaById(id){ return METAS.find(function(m){ return m.id === id; }); }
+
+  var DEFAULT_TIME_OPTIONS = {
+    study: [15, 20, 25, 30, 40, 50, 60, 90],
+    short: [3, 5, 10, 15],
+    long: [10, 15, 20, 35],
+    inverso: [10, 15, 20, 30, 45, 60, 90]
+  };
+  var MAX_MINUTES = { study: 600, short: 600, long: 600, inverso: 1440 };
+  var TIME_FIELD_TO_CONFIG = { study: "studyMinutes", short: "shortBreakMinutes", long: "longBreakMinutes", inverso: "inversoMinutes" };
+  var CUSTOM_TIMES_KEY = "productvt-tiempos-personalizados-v1";
+  function loadCustomTimes(){
+    try{ var raw = localStorage.getItem(CUSTOM_TIMES_KEY); return raw ? JSON.parse(raw) : { study: [], short: [], long: [], inverso: [] }; }
+    catch(e){ return { study: [], short: [], long: [], inverso: [] }; }
+  }
+  function saveCustomTimes(){ try{ localStorage.setItem(CUSTOM_TIMES_KEY, JSON.stringify(customTimes)); }catch(e){} }
+  var customTimes = loadCustomTimes();
+  if(!customTimes.inverso) customTimes.inverso = [];
+  function timeOptionsFor(field){
+    var merged = DEFAULT_TIME_OPTIONS[field].concat(customTimes[field]);
+    var uniq = Array.from(new Set(merged));
+    uniq.sort(function(a,b){ return a - b; });
+    return uniq;
+  }
+  function isCustomTime(field, n){ return DEFAULT_TIME_OPTIONS[field].indexOf(n) === -1; }
+
+  var CYCLES_BEFORE_LONG_OPTIONS = [2, 3, 4, 6];
+  var LUNCH_MINUTES = 45;
+  var LUNCH_COOLDOWN_CYCLES = 3;
+  var LARGE_SEGMENT_THRESHOLD_SECONDS = 1800;
+  var CANCEL_CONFIRM_WINDOW_SECONDS = 15;
+  var PRESET_KEY = "productvt-cronometro-formatos-v1";
+
+  function loadPresets(){
+    try{ var raw = localStorage.getItem(PRESET_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(e){ return []; }
+  }
+  function savePresets(list){
+    try{ localStorage.setItem(PRESET_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  var presets = loadPresets();
+  var config = {
+    studyMinutes: 25,
+    shortBreakMinutes: 5,
+    longBreakMinutes: 15,
+    cyclesBeforeLongBreak: 4,
+    inversoMinutes: 30
+  };
+
+  // ---- Reglas de negocio (docs/03-CRONOMETRO.md) ----
+  function computeGrantedBreakSeconds(cycleNumber){
+    var short = config.shortBreakMinutes * 60;
+    var givesWay = cycleNumber % config.cyclesBeforeLongBreak === 0;
+    var long = givesWay ? config.longBreakMinutes * 60 : 0;
+    return short + long;
+  }
+  function resolveBreakType(usedSeconds, grantedSeconds, cycleNumber){
+    if(usedSeconds === 0) return "skipped";
+    var givesWay = cycleNumber % config.cyclesBeforeLongBreak === 0;
+    if(usedSeconds === grantedSeconds) return givesWay ? "long" : "short";
+    return "custom";
+  }
+  function resolveStudyResponseWindowSeconds(cycleNumber, durationSeconds){
+    var givesWay = cycleNumber % config.cyclesBeforeLongBreak === 0;
+    var isLarge = durationSeconds > LARGE_SEGMENT_THRESHOLD_SECONDS;
+    return (isLarge || givesWay) ? 600 : 30;
+  }
+  function resolveBreakResponseWindowSeconds(breakType, usedSeconds){
+    var isLong = breakType === "long" || usedSeconds > LARGE_SEGMENT_THRESHOLD_SECONDS;
+    return isLong ? 600 : 30;
+  }
+  function isLunchAvailable(){
+    return !session.lunchUsed || session.cyclesSinceLunch >= LUNCH_COOLDOWN_CYCLES;
+  }
+
+  var stage = document.getElementById("stage");
+  var topTitle = document.getElementById("topTitle");
+  var rolePill = document.getElementById("rolePill");
+  var roleLabel = document.getElementById("roleLabel");
+  var speedSelect = document.getElementById("speedSelect");
+  var lunchCounterEl = document.getElementById("lunchCounter");
+  var WAITING_STATES = ["study_completed_waiting_response", "break_selection", "break_completed_waiting_response"];
+
+  var state = {
+    screen: "setup",
+    role: "dominante",
+    cronometroType: "normal",
+    category: categoriesOf("productiva")[0],
+    remaining: 0,
+    total: 0,
+    ringColor: "var(--accent)",
+    showSaveForm: false,
+    showNewCat: false,
+    newCatColor: PALETTE[0],
+    customTimeField: null,
+    customBreakOpen: false,
+    linkedMetaId: null,
+    activePresetId: null,
+    metaFlashed: false,
+    speed: 30,
+    tickHandle: null
+  };
+
+  var session = null; // se crea en START_SESSION, se limpia al volver a "setup"
+  var activeCancelCleanup = null;
+
+  function fmt(sec){
+    sec = Math.max(0, Math.ceil(sec));
+    var m = Math.floor(sec/60), s = sec%60;
+    return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+  }
+  function fmtMin(sec){ return Math.round(sec/60) + " min"; }
+
+  function stopTicking(){
+    if(state.tickHandle){ clearInterval(state.tickHandle); state.tickHandle = null; }
+  }
+
+  function startTicking(onTick, onDone){
+    stopTicking();
+    var last = Date.now();
+    state.tickHandle = setInterval(function(){
+      var now = Date.now();
+      var dt = (now - last) / 1000 * state.speed;
+      last = now;
+      state.remaining -= dt;
+      if(state.remaining <= 0){
+        state.remaining = 0;
+        stopTicking();
+        onTick();
+        onDone();
+      } else {
+        onTick();
+      }
+    }, 100);
+  }
+
+  function tickUp(onTick, onTarget, onHardCap){
+    stopTicking();
+    var last = Date.now();
+    state.tickHandle = setInterval(function(){
+      var now = Date.now();
+      var dt = (now - last) / 1000 * state.speed;
+      last = now;
+      state.elapsed += dt;
+      if(!state.metaFlashed && state.elapsed >= state.targetSeconds){
+        state.metaFlashed = true;
+        onTarget();
+      }
+      if(state.elapsed >= state.hardCapSeconds){
+        state.elapsed = state.hardCapSeconds;
+        stopTicking();
+        onTick();
+        onHardCap();
+      } else {
+        onTick();
+      }
+    }, 100);
+  }
+
+  function goto(screen, opts){
+    stopTicking();
+    if(activeCancelCleanup){ activeCancelCleanup(); activeCancelCleanup = null; }
+    state.screen = screen;
+    Object.assign(state, opts || {});
+    render();
+  }
+
+  // ---- Motor: sesión de estudio (docs/03-CRONOMETRO.md §4) ----
+
+  function startSession(){ // T1
+    session = {
+      cyclesCompleted: 0, cyclesSinceLunch: 0, lunchUsed: false,
+      effectiveStudySeconds: 0, bankRemainingSeconds: 0,
+      stateBeforeLunch: null, pausedSegment: null,
+      pendingBreak: null, lastBreakType: null, lastBreakUsedSeconds: 0
+    };
+    enterStudyRunning();
+  }
+
+  function enterStudyRunning(){ // T1 / T9 / T13 (retorno) / T14->T13
+    state.total = config.studyMinutes * 60;
+    state.remaining = state.total;
+    state.ringColor = "var(--accent)";
+    goto("study_running");
+    startTicking(renderRing, handleStudyFinished);
+  }
+
+  function handleStudyFinished(){ // T2, auto
+    session.cyclesCompleted++;
+    session.cyclesSinceLunch++;
+    session.effectiveStudySeconds += config.studyMinutes * 60;
+    enterStudyWaiting();
+  }
+
+  function enterStudyWaiting(){ // T2 destino / T3 (ventana propia) / retorno T13
+    var windowSeconds = resolveStudyResponseWindowSeconds(session.cyclesCompleted, config.studyMinutes * 60);
+    state.total = windowSeconds; state.remaining = windowSeconds;
+    goto("study_completed_waiting_response");
+    startTicking(renderRing, handleExpire);
+  }
+
+  function ackStudyFinished(){ // T3
+    var windowSeconds = resolveStudyResponseWindowSeconds(session.cyclesCompleted, config.studyMinutes * 60);
+    state.total = windowSeconds; state.remaining = windowSeconds;
+    goto("break_selection");
+    startTicking(renderRing, handleExpire);
+  }
+
+  function chooseSuggestedBreak(){ // T4
+    var granted = computeGrantedBreakSeconds(session.cyclesCompleted);
+    if(granted <= 0){ skipBreak(); return; }
+    enterBreakRunning(granted, session.cyclesCompleted);
+  }
+
+  function chooseCustomBreak(chosenSeconds){ // T5
+    if(chosenSeconds <= 0){
+      registerBreakSegment(0, session.cyclesCompleted);
+      enterStudyRunning();
+      return;
+    }
+    enterBreakRunning(chosenSeconds, session.cyclesCompleted);
+  }
+
+  function skipBreak(){ // T6
+    registerBreakSegment(0, session.cyclesCompleted);
+    enterStudyRunning();
+  }
+
+  function enterBreakRunning(seconds, cycleAtGrant){
+    state.total = seconds; state.remaining = seconds;
+    state.ringColor = "var(--break)";
+    session.pendingBreak = { cycleAtGrant: cycleAtGrant };
+    goto("break_running");
+    startTicking(renderRing, handleBreakFinished);
+  }
+
+  function handleBreakFinished(){ // T8, auto
+    var usedSeconds = state.total;
+    var cycleAtGrant = session.pendingBreak.cycleAtGrant;
+    var breakType = registerBreakSegment(usedSeconds, cycleAtGrant);
+    var windowSeconds = resolveBreakResponseWindowSeconds(breakType, usedSeconds);
+    session.lastBreakType = breakType; session.lastBreakUsedSeconds = usedSeconds;
+    state.total = windowSeconds; state.remaining = windowSeconds;
+    goto("break_completed_waiting_response");
+    startTicking(renderRing, handleExpire);
+  }
+
+  function registerBreakSegment(usedSeconds, cycleAtGrant){
+    var granted = computeGrantedBreakSeconds(cycleAtGrant);
+    var breakType = resolveBreakType(usedSeconds, granted, cycleAtGrant);
+    session.bankRemainingSeconds += (granted - usedSeconds);
+    session.lastBreakType = breakType; session.lastBreakUsedSeconds = usedSeconds;
+    return breakType;
+  }
+
+  function continueStudy(){ enterStudyRunning(); } // T9
+  function endSession(){ goto("session_completed"); } // T7 / T10
+
+  function requestLunch(){ // T11 / T12
+    if(!isLunchAvailable()) return;
+    var running = state.screen === "study_running" || state.screen === "break_running";
+    session.stateBeforeLunch = state.screen;
+    session.pausedSegment = running ? { remainingSeconds: state.remaining, totalSeconds: state.total } : null;
+    session.lunchUsed = true; session.cyclesSinceLunch = 0;
+    state.total = LUNCH_MINUTES * 60; state.remaining = state.total;
+    state.ringColor = "var(--lunch)";
+    goto("lunch_running");
+    startTicking(renderRing, handleLunchFinished);
+  }
+
+  function handleLunchFinished(){ // T13
+    var back = session.stateBeforeLunch;
+    if(session.pausedSegment){
+      state.total = session.pausedSegment.totalSeconds;
+      state.remaining = session.pausedSegment.remainingSeconds;
+      state.ringColor = back === "study_running" ? "var(--accent)" : "var(--break)";
+      session.pausedSegment = null;
+      goto(back);
+      startTicking(renderRing, back === "study_running" ? handleStudyFinished : handleBreakFinished);
+    } else if(back === "study_completed_waiting_response"){
+      enterStudyWaiting();
+    } else if(back === "break_selection"){
+      ackStudyFinished();
+    } else { // break_completed_waiting_response
+      var windowSeconds = resolveBreakResponseWindowSeconds(session.lastBreakType, session.lastBreakUsedSeconds);
+      state.total = windowSeconds; state.remaining = windowSeconds;
+      goto("break_completed_waiting_response");
+      startTicking(renderRing, handleExpire);
+    }
+  }
+
+  function handleExpire(){ goto("session_expired"); } // T17, auto
+
+  function startInverso(){
+    state.targetSeconds = config.inversoMinutes * 60;
+    state.hardCapSeconds = state.targetSeconds * 2;
+    state.elapsed = 0;
+    state.metaFlashed = false;
+    state.ringColor = "var(--ocio)";
+    goto("inverso_running");
+    tickUp(renderRing, function(){ /* meta alcanzada, se refleja en el render/anillo */ }, function(){
+      goto("inversoDone", { finalElapsed: state.hardCapSeconds });
+    });
+  }
+
+  function finishInverso(){
+    goto("inversoDone", { finalElapsed: state.elapsed });
+  }
+
+  function renderRing(){
+    var circle = stage.querySelector(".ring-fill");
+    var clock = stage.querySelector(".clock");
+    if(state.screen === "inverso_running"){
+      var pct = state.hardCapSeconds ? state.elapsed / state.hardCapSeconds : 0;
+      if(circle){
+        var C = 2 * Math.PI * 108;
+        circle.style.strokeDashoffset = (C * (1 - pct));
+        circle.style.stroke = state.metaFlashed ? "var(--warn)" : state.ringColor;
+      }
+      if(clock) clock.textContent = fmt(state.elapsed);
+      return;
+    }
+    var pct2 = state.total ? state.remaining / state.total : 0;
+    if(circle){
+      var C2 = 2 * Math.PI * 108;
+      circle.style.strokeDashoffset = (C2 * (1 - pct2));
+      var near = WAITING_STATES.indexOf(state.screen) !== -1 && pct2 < .25;
+      circle.style.stroke = near ? "var(--warn)" : state.ringColor;
+    }
+    if(clock) clock.textContent = fmt(state.remaining);
+  }
+
+  function ring(innerHtml, midMarker){
+    return '<div class="ring-wrap"><svg viewBox="0 0 240 240">' +
+      '<circle class="ring-track" cx="120" cy="120" r="108"></circle>' +
+      (midMarker ? '<circle class="ring-mark" cx="120" cy="120" r="108" stroke-dasharray="2 '+(2*Math.PI*108-2)+'" stroke-dashoffset="'+(-2*Math.PI*108*0.5)+'"></circle>' : '') +
+      '<circle class="ring-fill" cx="120" cy="120" r="108" stroke-dasharray="' + (2*Math.PI*108) + '"></circle>' +
+      '</svg><div class="ring-center">' + innerHtml + '</div></div>';
+  }
+
+  function catChip(cat){
+    // D6.b: si el bloque está ligado a una meta, su color y nombre mandan sobre los de categoría
+    var meta = state.linkedMetaId ? metaById(state.linkedMetaId) : null;
+    if(meta) return '<span class="cat-chip"><span class="swatch" style="background:'+(meta.color||cat.color)+'"></span>'+meta.name+'</span>';
+    return '<span class="cat-chip"><span class="swatch" style="background:'+cat.color+'"></span>'+cat.name+'</span>';
+  }
+
+  function selectHtml(id, options, current, suffix){
+    return '<select id="'+id+'">' + options.map(function(n){
+      return '<option value="'+n+'" '+(n===current?"selected":"")+'>'+n+(suffix||"")+'</option>';
+    }).join("") + '</select>';
+  }
+
+  function activePreset(){
+    return presets.find(function(p){ return p.id === state.activePresetId; }) || null;
+  }
+
+  function timeChips(field, currentValue){
+    var opts = timeOptionsFor(field);
+    var html = '<div class="time-chips" data-field="'+field+'">';
+    opts.forEach(function(n){
+      var custom = isCustomTime(field, n);
+      html += '<button type="button" class="tchip'+(custom?" custom":"")+'" data-field="'+field+'" data-val="'+n+'" aria-pressed="'+(n===currentValue)+'">'+n+
+        (custom ? '<span class="tchip-x" data-field="'+field+'" data-val="'+n+'" title="Quitar">×</span>' : '') +
+        '</button>';
+    });
+    html += '<button type="button" class="tchip add" data-open-custom="'+field+'">+ Otro</button>';
+    html += '</div>';
+    if(state.customTimeField === field){
+      html += '<div class="custom-time-row">' +
+        '<input type="number" id="customTimeInput" min="1" max="'+MAX_MINUTES[field]+'" placeholder="min" value="'+currentValue+'">' +
+        '<label class="ct-check"><input type="checkbox" id="customTimeSave" checked> Guardar como preset</label>' +
+        '<button type="button" class="mini-btn" id="customTimeUse">Usar</button>' +
+        '</div>';
+      html += '<div class="note">Máximo '+ (MAX_MINUTES[field] >= 60 ? Math.round(MAX_MINUTES[field]/60) + " horas" : MAX_MINUTES[field] + " min") +'.</div>';
+    }
+    return html;
+  }
+
+  function render(){
+    var titles = {
+      setup: "Cronómetro", study_running: "Estudiando", inverso_running: "Tiempo libre",
+      study_completed_waiting_response: "¿Qué sigue?", break_selection: "Elegí tu descanso",
+      break_running: "Descanso", break_completed_waiting_response: "Toca estudiar",
+      lunch_running: "Almuerzo", inversoDone: "Cronómetro",
+      session_completed: "Sesión terminada", session_cancelled: "Bloque cancelado", session_expired: "Tiempo vencido"
+    };
+    topTitle.textContent = titles[state.screen] || "Cronómetro";
+    rolePill.className = "role-pill" + (state.role === "espectador" ? " spectator" : "");
+    roleLabel.textContent = state.role === "espectador" ? "Espectador" : "Dominante";
+    speedSelect.value = String(state.speed);
+    lunchCounterEl.textContent = session ? session.cyclesSinceLunch : 0;
+
+    var html = "";
+    var mode = state.cronometroType;
+    var typeOfCats = typeForMode(mode);
+    var cats = categoriesOf(typeOfCats);
+    var lunchBtn = '<button class="btn ghost" id="requestLunch" '+(session && isLunchAvailable() ? "" : "disabled")+'>Almuerzo · '+LUNCH_MINUTES+' min</button>';
+
+    if(state.screen === "setup"){
+      html += '<div class="type-toggle">' +
+        '<button class="type-btn" data-type="normal" aria-pressed="'+(mode==="normal")+'"><strong>Normal</strong>estudio con bloques y descansos</button>' +
+        '<button class="type-btn" data-type="inverso" aria-pressed="'+(mode==="inverso")+'"><strong>Inverso</strong>cronómetro libre para tu ocio</button>' +
+        '</div>';
+
+      html += '<div class="state-label">'+(mode==="normal"?"Elegí qué vas a estudiar":"Elegí cómo vas a descansar")+'</div>';
+
+      if(mode === "normal" && presets.length){
+        html += '<div class="choices" id="presetChoices">' + presets.map(function(p){
+          var cat = CATEGORIES.find(function(c){ return c.id === p.categoryId; }) || cats[0];
+          return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'"><span class="swatch" style="background:'+cat.color+'"></span>'+p.name+'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span></button>';
+        }).join("") + '</div>';
+      }
+
+      html += '<div class="choices" id="catChoices">' + cats.map(function(c){
+        return '<button class="choice" data-cat="'+c.id+'" aria-pressed="'+(state.category && c.id===state.category.id)+'"><span class="swatch" style="background:'+c.color+'"></span>'+c.name+'</button>';
+      }).join("") + '<button class="choice add-cat" id="openNewCat" type="button">+ Nueva</button></div>';
+
+      if(state.showNewCat){
+        var isCustom = !PALETTE.includes(state.newCatColor);
+        html += '<div class="new-cat-form">' +
+          '<input type="text" id="newCatName" placeholder="Nombre de la categoría" maxlength="24">' +
+          '<div class="palette" id="newCatPalette">' + orderedPalette().map(function(c){
+            return '<button type="button" data-color="'+c+'" style="background:'+c+'" aria-pressed="'+(c===state.newCatColor)+'"></button>';
+          }).join("") +
+          '<label class="palette-more'+(isCustom?" active":"")+'" title="Elegir cualquier color (RGB)"><input type="color" id="newCatColorPicker" value="'+state.newCatColor+'"></label>' +
+          '</div>' +
+          '<div class="new-cat-actions"><button class="mini-btn" id="confirmNewCat" type="button">Crear</button><button class="mini-btn ghost" id="cancelNewCat" type="button">Cancelar</button></div>' +
+          '</div>';
+      }
+
+      if(mode === "normal"){
+        var metaOptions = state.category ? METAS.filter(function(m){ return m.categoryId === state.category.id; }) : [];
+        html += '<div class="settings-group"><div class="grow"><span class="glabel">Vincular a una meta (opcional)</span></div>' +
+          '<select id="linkMetaSelect"><option value="">Sin meta (aleatorio)</option>' +
+          metaOptions.map(function(m){ return '<option value="'+m.id+'" '+(m.id===state.linkedMetaId?"selected":"")+'>'+(m.parentGoalId?"— ":"")+m.name+'</option>'; }).join("") +
+          '</select></div>';
+        html += '<div class="settings-block">';
+        html += '<div class="settings-group"><div class="grow"><span class="glabel">Duración de estudio (min)</span></div>' + timeChips("study", config.studyMinutes) + '</div>';
+        html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso corto (min)</span></div>' + timeChips("short", config.shortBreakMinutes) + '</div>';
+        html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso largo (min)</span><span class="gcontrols">cada ' + selectHtml("cyclesBeforeLongSelect", CYCLES_BEFORE_LONG_OPTIONS, config.cyclesBeforeLongBreak, " ciclos") + '</span></div>' + timeChips("long", config.longBreakMinutes) + '</div>';
+        html += '</div>';
+
+        var ap = activePreset();
+        if(state.showSaveForm){
+          html += '<div class="save-row">' +
+            '<input type="text" id="presetNameInput" placeholder="Nombre del formato" maxlength="24" value="'+(ap?ap.name:"")+'">' +
+            '<button class="mini-btn" id="confirmSave" type="button">Guardar</button>' +
+            '<button class="mini-btn ghost" id="cancelSave" type="button">Cancelar</button>' +
+            '</div>';
+        } else if(ap){
+          html += '<div class="save-actions"><span class="editing-tag">Editando «'+ap.name+'»</span>' +
+            '<button class="btn ghost" id="updatePreset" type="button">Actualizar</button>' +
+            '<button class="btn ghost" id="showSaveForm" type="button">Guardar como nuevo</button></div>';
+        } else {
+          html += '<button class="btn ghost" id="showSaveForm" type="button">Guardar este formato</button>';
+        }
+      } else {
+        html += '<div class="settings-block">';
+        html += '<div class="settings-group"><div class="grow"><span class="glabel">Duración objetivo (min)</span></div>' + timeChips("inverso", config.inversoMinutes) + '</div>';
+        html += '</div>';
+        html += '<div class="helper">Sigue corriendo después del objetivo, hasta el doble como tope. Podés terminar cuando quieras, sin perder nada.</div>';
+      }
+
+      html += '<div class="actions"><button class="btn primary" id="startBtn">'+(mode==="normal"?"Iniciar sesión":"Iniciar tiempo libre")+'</button></div>';
+    }
+
+    if(state.screen === "inverso_running"){
+      html += '<div class="state-label">Tiempo libre</div>';
+      if(state.category) html += catChip(state.category);
+      html += ring('<span class="clock">'+fmt(state.elapsed)+'</span><span class="clock-sub">'+(state.metaFlashed?"¡meta cumplida! sigue corriendo":"objetivo "+config.inversoMinutes+" min")+'</span>', true);
+      html += '<div class="actions"><button class="btn primary" id="finishInverso">Finalizar</button></div>';
+    }
+
+    if(state.screen === "study_running" || state.screen === "break_running" || state.screen === "lunch_running"){
+      var label = state.screen === "study_running" ? "Estudiando" : state.screen === "lunch_running" ? "Almuerzo" : "Descanso";
+      html += '<div class="state-label">'+label+'</div>';
+      if(state.screen === "study_running" && state.category) html += catChip(state.category);
+      html += ring('<span class="clock">'+fmt(state.remaining)+'</span><span class="clock-sub">'+fmtMin(state.total)+'</span>');
+      html += '<div class="actions">';
+      if(state.screen !== "lunch_running") html += lunchBtn;
+      html += '<button class="btn danger-ghost" id="cancelBtn">Cancelar bloque</button>';
+      html += '</div>';
+    }
+
+    if(state.screen === "study_completed_waiting_response"){
+      html += '<div class="state-label">¡Bloque terminado!</div>';
+      html += '<div class="helper stakes">Si no respondés a tiempo se pierde el tiempo de este bloque.</div>';
+      html += ring('<span class="clock">'+fmt(state.remaining)+'</span><span class="clock-sub">para responder</span>');
+      html += '<div class="actions"><button class="btn primary" id="ackStudy">Seguir</button>' + lunchBtn + '<button class="btn danger-ghost" id="cancelBtn">Cancelar bloque</button></div>';
+    }
+
+    if(state.screen === "break_selection"){
+      var granted = computeGrantedBreakSeconds(session.cyclesCompleted);
+      var available = session.bankRemainingSeconds + granted;
+      html += '<div class="helper stakes">Si no respondés a tiempo se pierde el tiempo de este bloque.</div>';
+      html += ring('<span class="clock">'+fmt(state.remaining)+'</span><span class="clock-sub">para elegir</span>');
+      html += '<div class="helper">Banco disponible: '+fmtMin(available)+'.</div>';
+      html += '<div class="actions">';
+      if(granted > 0) html += '<button class="btn primary" id="pickSuggested">Tomar descanso · '+fmtMin(granted)+'</button>';
+      if(state.customBreakOpen){
+        html += '<div class="custom-time-row"><input type="number" id="customBreakInput" min="0" max="'+Math.floor(available/60)+'" placeholder="min" value="0"><button class="mini-btn" id="useCustomBreak" type="button">Usar</button></div>';
+      } else {
+        html += '<button class="btn secondary" id="openCustomBreak">Personalizado (0–'+Math.floor(available/60)+' min)</button>';
+      }
+      html += '<button class="btn secondary" id="skipBreakBtn">Saltar</button>';
+      html += lunchBtn;
+      html += '<button class="btn ghost" id="endSessionBtn">Terminar sesión</button>';
+      html += '</div>';
+    }
+
+    if(state.screen === "break_completed_waiting_response"){
+      html += '<div class="state-label">Toca estudiar</div>';
+      html += '<div class="helper stakes">Si no respondés a tiempo se pierde el tiempo de este bloque.</div>';
+      html += ring('<span class="clock">'+fmt(state.remaining)+'</span><span class="clock-sub">para responder</span>');
+      html += '<div class="actions"><button class="btn primary" id="continueStudy">Empezar bloque</button>' + lunchBtn + '<button class="btn ghost" id="endSessionBtn">Terminar sesión</button></div>';
+    }
+
+    if(state.screen === "inversoDone"){
+      html += '<div class="state-label">Tiempo libre registrado</div>';
+      html += '<div class="helper">'+fmt(state.finalElapsed)+' de '+(state.category?state.category.name:"ocio")+'.</div>';
+      html += '<div class="actions"><button class="btn primary" id="backToSetup">Volver a empezar</button></div>';
+    }
+
+    if(state.screen === "session_completed"){
+      html += '<div class="state-label">Sesión terminada</div>';
+      html += '<div class="helper">Tiempo efectivo de estudio: '+fmtMin(session.effectiveStudySeconds)+'.</div>';
+      html += '<div class="actions"><button class="btn primary" id="backToSetup">Volver a empezar</button></div>';
+    }
+
+    if(state.screen === "session_cancelled"){
+      html += '<div class="state-label">Bloque cancelado</div>';
+      html += '<div class="helper">Se descartó el bloque en curso. Tiempo efectivo conservado: '+fmtMin(session.effectiveStudySeconds)+'.</div>';
+      html += '<div class="actions"><button class="btn primary" id="backToSetup">Volver a empezar</button></div>';
+    }
+
+    if(state.screen === "session_expired"){
+      html += '<div class="state-label">Se pasó el tiempo</div>';
+      html += '<div class="helper">No respondiste a tiempo. Tiempo efectivo conservado: '+fmtMin(session.effectiveStudySeconds)+'.</div>';
+      html += '<div class="actions"><button class="btn primary" id="backToSetup">Volver a empezar</button></div>';
+    }
+
+    stage.innerHTML = html;
+    renderRing();
+    wire();
+  }
+
+  function applyPresetValues(p){
+    state.category = CATEGORIES.find(function(c){ return c.id === p.categoryId; }) || state.category;
+    config.studyMinutes = p.studyMinutes;
+    config.shortBreakMinutes = p.shortBreakMinutes;
+    config.longBreakMinutes = p.longBreakMinutes;
+    config.cyclesBeforeLongBreak = p.cyclesBeforeLongBreak;
+    state.activePresetId = p.id;
+  }
+
+  function wire(){
+    var el;
+    document.querySelectorAll(".type-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.cronometroType = btn.dataset.type;
+        var cats = categoriesOf(typeForMode(state.cronometroType));
+        state.category = cats[0] || null;
+        state.activePresetId = null;
+        state.linkedMetaId = null;
+        state.showNewCat = false;
+        state.customTimeField = null;
+        render();
+      });
+    });
+
+    if(el = document.getElementById("startBtn")) el.addEventListener("click", function(){
+      state.cronometroType === "inverso" ? startInverso() : startSession();
+    });
+    if(el = document.getElementById("finishInverso")) el.addEventListener("click", finishInverso);
+    if(el = document.getElementById("cancelBtn")) el.addEventListener("click", openCancelSheet);
+    if(el = document.getElementById("requestLunch")) el.addEventListener("click", requestLunch);
+    if(el = document.getElementById("ackStudy")) el.addEventListener("click", ackStudyFinished);
+    if(el = document.getElementById("pickSuggested")) el.addEventListener("click", chooseSuggestedBreak);
+    if(el = document.getElementById("skipBreakBtn")) el.addEventListener("click", skipBreak);
+    if(el = document.getElementById("endSessionBtn")) el.addEventListener("click", endSession);
+    if(el = document.getElementById("continueStudy")) el.addEventListener("click", continueStudy);
+    if(el = document.getElementById("backToSetup")) el.addEventListener("click", function(){ session = null; goto("setup"); });
+
+    if(el = document.getElementById("openCustomBreak")) el.addEventListener("click", function(){
+      state.customBreakOpen = true; render();
+      var inp = document.getElementById("customBreakInput"); if(inp) inp.focus();
+    });
+    if(el = document.getElementById("useCustomBreak")) el.addEventListener("click", function(){
+      var inp = document.getElementById("customBreakInput");
+      var mins = Math.round(Number(inp && inp.value));
+      var max = Number(inp && inp.max);
+      if(isNaN(mins) || mins < 0) return;
+      mins = Math.min(mins, max);
+      state.customBreakOpen = false;
+      chooseCustomBreak(mins * 60);
+    });
+
+    if(el = document.getElementById("cyclesBeforeLongSelect")) el.addEventListener("change", function(){ config.cyclesBeforeLongBreak = Number(el.value); render(); });
+
+    document.querySelectorAll(".tchip[data-val]").forEach(function(chip){
+      chip.addEventListener("click", function(e){
+        if(e.target.classList.contains("tchip-x")) return;
+        config[TIME_FIELD_TO_CONFIG[chip.dataset.field]] = Number(chip.dataset.val);
+        state.customTimeField = null;
+        render();
+      });
+    });
+    document.querySelectorAll(".tchip-x").forEach(function(x){
+      x.addEventListener("click", function(e){
+        e.stopPropagation();
+        var field = x.dataset.field, val = Number(x.dataset.val);
+        customTimes[field] = customTimes[field].filter(function(n){ return n !== val; });
+        saveCustomTimes();
+        render();
+      });
+    });
+    document.querySelectorAll("[data-open-custom]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.customTimeField = btn.dataset.openCustom;
+        render();
+        var inp = document.getElementById("customTimeInput");
+        if(inp){ inp.focus(); inp.select(); }
+      });
+    });
+    if(el = document.getElementById("customTimeInput")){
+      el.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); applyCustomTime(); } });
+    }
+    if(el = document.getElementById("customTimeUse")) el.addEventListener("click", applyCustomTime);
+
+    if(el = document.getElementById("showSaveForm")) el.addEventListener("click", function(){
+      state.showSaveForm = true; render();
+      var inp = document.getElementById("presetNameInput");
+      if(inp) inp.focus();
+    });
+    if(el = document.getElementById("cancelSave")) el.addEventListener("click", function(){ state.showSaveForm = false; render(); });
+    if(el = document.getElementById("confirmSave")) el.addEventListener("click", function(){ saveCurrentAsPreset(false); });
+    if(el = document.getElementById("updatePreset")) el.addEventListener("click", function(){ saveCurrentAsPreset(true); });
+    if(el = document.getElementById("presetNameInput")){
+      el.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){ e.preventDefault(); saveCurrentAsPreset(false); }
+      });
+    }
+
+    if(el = document.getElementById("openNewCat")) el.addEventListener("click", function(){
+      state.showNewCat = true;
+      state.newCatColor = lastColor || PALETTE[0];
+      render();
+      var inp = document.getElementById("newCatName");
+      if(inp) inp.focus();
+    });
+    if(el = document.getElementById("cancelNewCat")) el.addEventListener("click", function(){ state.showNewCat = false; render(); });
+    if(el = document.getElementById("confirmNewCat")) el.addEventListener("click", createCategory);
+    if(el = document.getElementById("newCatName")){
+      el.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); createCategory(); } });
+    }
+    document.querySelectorAll("#newCatPalette button[data-color]").forEach(function(b){
+      b.addEventListener("click", function(){ state.newCatColor = b.dataset.color; render(); var inp=document.getElementById("newCatName"); if(inp) inp.focus(); });
+    });
+    if(el = document.getElementById("newCatColorPicker")){
+      el.addEventListener("change", function(){ state.newCatColor = el.value; render(); });
+    }
+
+    document.querySelectorAll("#catChoices [data-cat]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.category = CATEGORIES.find(function(c){ return c.id === btn.dataset.cat; });
+        state.linkedMetaId = null; // cambiar de categoría a mano invalida cualquier meta vinculada
+        render();
+      });
+    });
+    if(el = document.getElementById("linkMetaSelect")) el.addEventListener("change", function(){ state.linkedMetaId = el.value || null; });
+    document.querySelectorAll("#presetChoices [data-preset]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        if(e.target.classList.contains("preset-x")) return;
+        var p = presets.find(function(pp){ return pp.id === btn.dataset.preset; });
+        if(!p) return;
+        applyPresetValues(p);
+        render();
+      });
+    });
+    document.querySelectorAll("#presetChoices .preset-x").forEach(function(x){
+      x.addEventListener("click", function(e){
+        e.stopPropagation();
+        presets = presets.filter(function(p){ return p.id !== x.dataset.delPreset; });
+        if(state.activePresetId === x.dataset.delPreset) state.activePresetId = null;
+        savePresets(presets);
+        render();
+      });
+    });
+  }
+
+  function applyCustomTime(){
+    var field = state.customTimeField;
+    if(!field) return;
+    var inp = document.getElementById("customTimeInput");
+    var checkbox = document.getElementById("customTimeSave");
+    var val = Math.round(Number(inp && inp.value));
+    if(!val || val < 1) return;
+    val = Math.min(val, MAX_MINUTES[field]);
+    config[TIME_FIELD_TO_CONFIG[field]] = val;
+    if(checkbox && checkbox.checked && isCustomTime(field, val) && customTimes[field].indexOf(val) === -1){
+      customTimes[field].push(val);
+      saveCustomTimes();
+    }
+    state.customTimeField = null;
+    render();
+  }
+
+  function createCategory(){
+    var inp = document.getElementById("newCatName");
+    var name = inp && inp.value.trim();
+    if(!name) return;
+    var cat = {
+      id: "c" + Date.now() + Math.random().toString(36).slice(2, 6),
+      name: name, color: state.newCatColor, type: typeForMode(state.cronometroType)
+    };
+    CATEGORIES.push(cat);
+    saveCategories();
+    lastColor = cat.color;
+    saveLastColor(lastColor);
+    state.category = cat;
+    state.showNewCat = false;
+    render();
+  }
+
+  function saveCurrentAsPreset(updateInPlace){
+    var inp = document.getElementById("presetNameInput");
+    var typedName = inp && inp.value.trim();
+    var data = {
+      categoryId: state.category.id,
+      studyMinutes: config.studyMinutes,
+      shortBreakMinutes: config.shortBreakMinutes,
+      longBreakMinutes: config.longBreakMinutes,
+      cyclesBeforeLongBreak: config.cyclesBeforeLongBreak
+    };
+    if(updateInPlace && state.activePresetId){
+      var existing = activePreset();
+      if(existing) Object.assign(existing, data);
+    } else {
+      var name = typedName || ("Formato " + (presets.length + 1));
+      var preset = Object.assign({ id: "p" + Date.now() + Math.random().toString(36).slice(2, 6), name: name }, data);
+      presets.push(preset);
+      state.activePresetId = preset.id;
+    }
+    savePresets(presets);
+    state.showSaveForm = false;
+    render();
+  }
+
+  function openCancelSheet(){ // T14/T15/T16 — doble confirmación 15s+15s, corre en paralelo a la ventana de respuesta si la hay
+    var phase = 1; // 1 = primera espera, 2 = segunda espera (tras el primer toque)
+    var unlocked = false;
+    var seconds = CANCEL_CONFIRM_WINDOW_SECONDS;
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<h2>¿Cancelar bloque?</h2>' +
+      '<p>Se pierde el tiempo del bloque en curso. Los bloques anteriores ya completados se conservan. No se puede deshacer.</p>' +
+      '<button class="btn secondary" id="keepGoing">No, seguir estudiando</button>' +
+      '<button class="btn primary" style="background:var(--danger);color:var(--accent-ink)" id="confirmCancel" disabled>Esperá '+seconds+'s…</button>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    var confirmBtn = wrap.querySelector("#confirmCancel");
+    var last = Date.now();
+    var countdown = setInterval(function(){
+      if(unlocked) return;
+      var now = Date.now();
+      seconds -= (now - last) / 1000 * state.speed;
+      last = now;
+      if(seconds <= 0){
+        unlocked = true;
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = phase === 1 ? "Sí, cancelar" : "¿Seguro? Sí, cancelar";
+      } else {
+        confirmBtn.textContent = "Esperá " + Math.ceil(seconds) + (phase === 2 ? "s más…" : "s…");
+      }
+    }, 100);
+    function cleanup(){ clearInterval(countdown); wrap.remove(); activeCancelCleanup = null; }
+    activeCancelCleanup = cleanup;
+    wrap.querySelector("#keepGoing").addEventListener("click", cleanup);
+    confirmBtn.addEventListener("click", function(){
+      if(!unlocked) return;
+      if(phase === 1){
+        phase = 2; unlocked = false; seconds = CANCEL_CONFIRM_WINDOW_SECONDS; last = Date.now();
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Esperá " + seconds + "s más…";
+        return;
+      }
+      cleanup();
+      goto("session_cancelled");
+    });
+  }
+
+  function openConflictSheet(){
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<h2>Otro dispositivo quiere el control</h2>' +
+      '<p>Solo un dispositivo puede iniciar o modificar el bloque a la vez. El que confirme primero queda como dominante; el otro pasa a espectador (puede seguir viendo el conteo).</p>' +
+      '<button class="btn secondary" id="keepControl">Mantener el control acá</button>' +
+      '<button class="btn primary" id="giveControl">Ceder el control</button>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    wrap.querySelector("#keepControl").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#giveControl").addEventListener("click", function(){
+      wrap.remove();
+      state.role = "espectador";
+      render();
+    });
+  }
+
+  speedSelect.addEventListener("change", function(){ state.speed = Number(speedSelect.value); });
+  document.getElementById("resetLunch").addEventListener("click", function(){ if(session) session.cyclesSinceLunch = 0; render(); });
+  document.getElementById("simConflict").addEventListener("click", openConflictSheet);
+  document.getElementById("skipTimer").addEventListener("click", function(){
+    if(state.screen === "inverso_running"){
+      state.elapsed = Math.max(state.elapsed, state.targetSeconds - 0.2);
+    } else if(state.tickHandle){
+      state.remaining = 0.05;
+    }
+  });
+
+  render();
+})();
+</script>

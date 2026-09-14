@@ -1,0 +1,129 @@
+<title>Visto Bueno</title>
+<style>
+  :root{
+    --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
+    --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --focus: #3A6B54;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+      --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+    --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+  }
+  *{ box-sizing: border-box; }
+  body{ background: var(--paper); color: var(--ink); font-family: "Archivo", ui-sans-serif, system-ui, sans-serif; line-height: 1.55; }
+  .page{ max-width: 760px; margin: 0 auto; padding: 48px 24px 100px; }
+
+  h1{ font-family: "Fraunces", Georgia, serif; font-weight: 480; font-size: clamp(30px,5vw,42px); text-wrap: balance; margin: 0 0 8px; }
+  .kicker{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--accent); margin-bottom: 10px; }
+  .lede{ color: var(--muted); max-width: 62ch; font-size: 15.5px; margin: 0 0 40px; }
+
+  h2{ font-family: "Fraunces", Georgia, serif; font-weight: 480; font-size: 22px; margin: 56px 0 6px; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+  h2 .n{ font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--muted); margin-right: 10px; }
+  h3{ font-family: "Archivo", sans-serif; font-weight: 600; font-size: 14.5px; margin: 22px 0 8px; }
+  p{ margin: 0 0 12px; max-width: 66ch; }
+  ul{ margin: 0 0 14px; padding-left: 20px; }
+  li{ margin-bottom: 6px; max-width: 62ch; }
+  code{ font-family: "IBM Plex Mono", monospace; font-size: .88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+
+  .card{
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    border: 1px solid var(--rule-strong); border-radius: 12px; padding: 16px 18px;
+    background: var(--paper-raised); margin: 14px 0 20px;
+  }
+  .card .info strong{ font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; display: block; margin-bottom: 3px; }
+  .card .info span{ font-size: 12.5px; color: var(--muted); }
+  .card a{
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 20px; padding: 7px 14px; text-decoration: none; white-space: nowrap;
+  }
+  .card a:hover{ background: var(--accent); color: var(--accent-ink); }
+
+  .tag{ font-family: "IBM Plex Mono", monospace; font-size: 10.5px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--rule-strong); color: var(--muted); }
+  .tag.v11{ color: var(--danger); border-color: var(--danger); }
+
+  .checklist{ list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  .checklist li{
+    display: flex; gap: 12px; align-items: flex-start; max-width: none;
+    border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; background: var(--paper-raised);
+  }
+  .checklist .box{ width: 16px; height: 16px; border: 1.5px solid var(--rule-strong); border-radius: 4px; flex: none; margin-top: 2px; }
+  .checklist b{ display: block; font-size: 13.5px; }
+  .checklist span{ font-size: 12.5px; color: var(--muted); }
+
+  .open{ border-left: 2px solid var(--danger); padding-left: 12px; margin: 10px 0; }
+  .open b{ font-size: 13px; }
+  .open p{ font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+
+  .team{ font-size: 13px; color: var(--muted); }
+  .team b{ color: var(--ink); }
+
+  footer{ margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--rule); font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="page">
+  <div class="kicker">Cierre de exploración visual — 2026-09-06</div>
+  <h1>Visto bueno</h1>
+  <p class="lede">Dos piezas de concepto listas para tu revisión antes de pasar a la formalización técnica: el Cronómetro (núcleo del producto, va a Fase 4) y el Atlas de Metas (exploración libre, V1.1). Revisá, y decime qué queda aprobado y qué hay que ajustar.</p>
+
+  <h2><span class="n">01</span>Cronómetro</h2>
+  <p>Pantalla central de la app. Cubre el ciclo completo: estudio → ventana de respuesta → elegir descanso (corto / largo / almuerzo) → descanso → siguiente bloque. Incorpora todas las reglas de negocio confirmadas hasta ahora.</p>
+
+  <div class="card">
+    <div class="info"><strong>Ciclo de Estudio</strong><span>Prototipo funcional, interactivo</span></div>
+    <a href="https://claude.ai/code/artifact/1e916f2b-4bf7-487a-93ba-d77306e95735" target="_blank" rel="noopener">Abrir prototipo →</a>
+  </div>
+
+  <h3>Qué incluye</h3>
+  <ul>
+    <li>Duración de estudio, descanso corto y descanso largo <strong>totalmente personalizables</strong>, cada uno con su propia cadencia (cada cuántos bloques se habilita).</li>
+    <li>Almuerzo: 45 min, disponible cada 3 bloques.</li>
+    <li>Ventana de respuesta al terminar de estudiar (30s si el módulo dura ≤30min, 10min si dura más) — si no respondés a tiempo, se pierde el tiempo efectivo de <em>ese</em> bloque; los anteriores quedan a salvo.</li>
+    <li>Formatos guardables y editables ("Editando «nombre»" cuando modificás uno ya guardado, con opción de actualizar o guardar como nuevo).</li>
+    <li>Cancelar sesión: requiere esperar 5 segundos antes de poder confirmar — fricción deliberada para que no sea un botón de pánico.</li>
+    <li>Modelo dominante/espectador para dos dispositivos a la vez, con diálogo de "tomar el control".</li>
+  </ul>
+
+  <h3>Abierto, no bloqueante</h3>
+  <div class="open"><b>Ventana "toca estudiar" al terminar un descanso</b><p>Hoy el botón para arrancar el próximo bloque es manual, sin countdown. El canon técnico define que debería tener ventana (30s tras descanso corto, 10min tras descanso largo) — falta aplicarlo en el mockup.</p></div>
+
+  <h2><span class="n">02</span>Atlas de Metas <span class="tag v11">V1.1 — no bloquea el V1</span></h2>
+  <p>Tu pedido de "galaxia de planetas" para metas y supermetas, con interactividad tipo grafo. Ya scopeado como V1.1 por el equipo (no hay moneda/tienda definida todavía) — esto es la dirección visual, para validar el lenguaje antes de que se formalice en la arquitectura.</p>
+
+  <div class="card">
+    <div class="info"><strong>Atlas de Metas</strong><span>Exploración visual, interactiva</span></div>
+    <a href="https://claude.ai/code/artifact/34adb5fe-bfa5-4614-88fd-fb4cb91b0842" target="_blank" rel="noopener">Abrir exploración →</a>
+  </div>
+
+  <h3>Qué incluye</h3>
+  <ul>
+    <li>Cada meta es un planeta; cada supermeta es una subgalaxia navegable (click para entrar, breadcrumb para volver).</li>
+    <li>Planetas arrastrables con física suave (repulsión + resorte), tipo graph view de Obsidian. Botón para restablecer al orden por defecto.</li>
+    <li>Fondo personalizable — 5 variantes tinta/papel, elegibles por vista (la galaxia principal y cada supermeta recuerdan la suya).</li>
+    <li>Skin de planeta personalizable — 5 tratamientos tipo grabado antiguo, dos marcados como bloqueados ("Tienda") para mostrar dónde engancha esa sección sin construir su lógica.</li>
+    <li>Metas cumplidas (resplandor + check) y fallidas (planeta lavado + X) ya tienen tratamiento visual propio.</li>
+  </ul>
+  <p style="font-size:13px;color:var(--muted)">Decisiones de diseño detalladas en <code>01-mockups/desktop/decisiones-visuales-galaxia.md</code>, para que el equipo de arquitectura las formalice cuando llegue el turno de V1.1.</p>
+
+  <h2><span class="n">03</span>Para tu visto bueno</h2>
+  <ul class="checklist">
+    <li><span class="box"></span><div><b>Reglas de negocio del Cronómetro</b><span>Estudio/descanso corto/descanso largo personalizables, almuerzo cada 3 bloques, ventana de respuesta, cancelar con 5s de espera.</span></div></li>
+    <li><span class="box"></span><div><b>Lenguaje visual "Papel"</b><span>Fraunces + Archivo + IBM Plex Mono, tonos tinta/papel — ya adoptado como skin base del sistema de diseño.</span></div></li>
+    <li><span class="box"></span><div><b>Dirección del Atlas de Metas</b><span>Galaxia/subgalaxia arrastrable en la misma línea visual, sin comprometerse todavía a mecánica de Tienda.</span></div></li>
+    <li><span class="box"></span><div><b>Secuencia V1 → V1.1</b><span>Galaxia + Tienda quedan después del núcleo del cronómetro, confirmable si preferís adelantarla.</span></div></li>
+  </ul>
+
+  <h2><span class="n">04</span>Quién hace qué ahora mismo</h2>
+  <p class="team"><b>productvt-90</b> lidera planificación/arquitectura/canon (docs/). <b>BC Orquestador Productvt</b> y <b>productvt-eb</b> construyen el código real en <code>productvt-beta/</code>. Esta sesión (<b>productvt-cb</b>) queda en dirección visual/UX — 00-vision, 01-mockups — sin tocar el repo real.</p>
+
+  <footer>productvt-cb · diseño Front End · 03-requisitos/decisiones-tomadas.md y nueva-funcionalidad-galaxia-tienda.md tienen el detalle de negocio completo</footer>
+</div>

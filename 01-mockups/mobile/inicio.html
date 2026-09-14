@@ -1,0 +1,884 @@
+<title>Constelación de Metas</title>
+<style>
+  :root{
+    --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
+    --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --gold: #B9812E; --focus: #3A6B54;
+    /* cromo de "juego" (HUD) — deliberadamente más saturado y chunky que el resto de la app */
+    --hud-bg: #16213F; --hud-bg-2: #223462; --hud-ink: #F3F1E7;
+    --cr-gold: #FFB627; --cr-gold-dark: #B9740A; --cr-red: #E2543A;
+    --sky-top: #3E6E8E; --sky-bottom: #17233F;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+      --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --gold: #D9A85C; --focus: #7BB596;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+    --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --gold: #D9A85C; --focus: #7BB596;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height: 100%; }
+  body{ background: var(--paper); color: var(--ink); font-family: "Archivo", ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
+  button{ font: inherit; }
+
+  .app{ height: 100vh; display: flex; flex-direction: column; max-width: 460px; margin: 0 auto; }
+
+  /* ---- barra superior: racha+moneda a la izq, amigos+config a la der (HUD oscuro tipo juego) ---- */
+  .topbar{ display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; gap: 8px; }
+  .top-cluster{ display: flex; align-items: center; gap: 8px; }
+  .pill{
+    display: inline-flex; align-items: center; gap: 5px; font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600;
+    border: 2px solid var(--hud-bg-2); background: var(--hud-bg); border-radius: 9px; padding: 6px 12px 6px 8px; color: var(--hud-ink);
+    cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,.25);
+  }
+  .pill.streak{ color: #FF8A5C; }
+  .pill.currency{ color: var(--cr-gold); }
+  .icon-btn{
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--hud-bg-2); background: var(--hud-bg);
+    color: var(--hud-ink); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; position: relative;
+    box-shadow: 0 2px 0 rgba(0,0,0,.25);
+  }
+  .icon-btn .badge{
+    position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--cr-gold);
+    border: 1.5px solid var(--paper); display: none;
+  }
+  .icon-btn .badge.show{ display: block; }
+
+  .chest-banner{
+    margin: 0 14px 8px; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--cr-gold-dark);
+    background: linear-gradient(180deg, #3A2E10, #241a08); color: var(--cr-gold);
+    display: none; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; cursor: pointer;
+  }
+  .chest-banner.show{ display: flex; }
+  .chest-banner .txt strong{ display: block; font-family: "Fraunces", Georgia, serif; font-size: 14px; font-weight: 500; color: var(--hud-ink); }
+  .chest-banner .go{ font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--cr-gold); }
+
+  /* ---- panel de la galaxia: más grande, cielo saturado, borde difuminado tipo arena de juego ---- */
+  .galaxy-panel{
+    margin: 0 12px; border-radius: 22px; border: 4px solid var(--hud-bg);
+    background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+    position: relative; overflow: hidden; height: 60vh; flex: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+  canvas{ display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas.dragging{ cursor: grabbing; }
+  .vignette{
+    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    box-shadow: inset 0 0 60px 18px var(--sky-bottom);
+  }
+  .panel-topleft{ position: absolute; top: 10px; left: 12px; z-index: 2; display: flex; align-items: center; gap: 8px; }
+  .panel-crumb{
+    font-family: "Fraunces", Georgia, serif; font-size: 13.5px;
+    color: var(--hud-ink); opacity: .85; cursor: pointer;
+  }
+  .edit-parent{
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; background: rgba(0,0,0,.3); color: var(--hud-ink);
+    border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 3px 8px; cursor: pointer;
+  }
+  .theme-picker{ position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 2; }
+  .swatch-btn{ width: 14px; height: 14px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .swatch-btn.active{ border-color: var(--hud-ink); }
+  .panel-bottom-row{ position: absolute; bottom: 8px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; gap: 8px; }
+  .reset-corner, .standard-corner{
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; background: rgba(0,0,0,.3); color: var(--hud-ink);
+    border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 4px 9px; cursor: pointer;
+  }
+
+  .spacer{ flex: 1; min-height: 6px; }
+
+  /* ---- botón grande de acción (estilo "Batalla"), superpuesto al borde del panel ---- */
+  .action-zone{ padding: 0 22px; margin-top: -22px; position: relative; z-index: 3; }
+  .big-action{
+    width: 100%; border: none; border-radius: 12px; padding: 15px; background: linear-gradient(180deg, #FFCF5C, var(--cr-gold));
+    color: #4A2E00; font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 4px 0 var(--cr-gold-dark), 0 8px 16px rgba(0,0,0,.3);
+    text-shadow: 0 1px 0 rgba(255,255,255,.4);
+  }
+  .big-action:active{ box-shadow: 0 2px 0 var(--cr-gold-dark), 0 4px 8px rgba(0,0,0,.3); transform: translateY(2px); }
+  .navbar{
+    display: grid; grid-template-columns: repeat(5,1fr); border-top: 1px solid var(--rule);
+    background: var(--paper); padding: 10px 2px calc(6px + env(safe-area-inset-bottom));
+  }
+  .navitem{
+    display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none;
+    color: var(--muted); font-size: 9px; font-family: "IBM Plex Mono", monospace; padding: 6px 1px; cursor: pointer; border-radius: 8px;
+  }
+  .navitem .ic{ font-size: 16px; line-height: 1; }
+  .navitem:hover{ color: var(--accent); }
+  .navitem.active{ color: var(--accent); }
+
+  /* ---- overlays / sheets ---- */
+  .overlay{ position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
+  .sheet{
+    background: var(--paper); border-top: 1px solid var(--rule); width: 100%; max-width: 460px;
+    border-radius: 18px 18px 0 0; padding: 22px 20px 26px; display: flex; flex-direction: column; gap: 14px;
+    max-height: 86vh; overflow-y: auto;
+  }
+  .sheet h2{ font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 500; margin: 0; }
+  .sheet p{ font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .sheet .close{ align-self: flex-end; background: none; border: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
+
+  .choice-cards{ display: flex; flex-direction: column; gap: 10px; }
+  .choice-card{
+    display: flex; align-items: center; gap: 14px; text-align: left; border: 1px solid var(--rule-strong);
+    background: var(--paper-raised); border-radius: 8px; padding: 16px; cursor: pointer; color: var(--ink);
+  }
+  .choice-card:hover{ border-color: var(--accent); }
+  .choice-card .ic{ font-size: 26px; }
+  .choice-card strong{ display: block; font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; }
+  .choice-card span{ font-size: 12px; color: var(--muted); }
+
+  .segmented{ display: flex; gap: 6px; }
+  .segmented button{
+    flex: 1; border: 1px solid var(--rule-strong); background: var(--paper-raised); color: var(--muted);
+    border-radius: 10px; padding: 9px 6px; cursor: pointer; font-size: 12.5px;
+  }
+  .segmented button[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+  .field{ display: flex; flex-direction: column; gap: 6px; }
+  .field label{ font-size: 11.5px; color: var(--muted); font-family: "IBM Plex Mono", monospace; }
+  .field input[type="text"], .field input[type="date"], .field select{
+    font-family: "Archivo", sans-serif; font-size: 14px; background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 8px; padding: 10px 12px;
+  }
+  .chip-row{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip{
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; border: 1px solid var(--rule-strong);
+    background: var(--paper-raised); color: var(--ink); border-radius: 7px; padding: 6px 11px; cursor: pointer;
+  }
+  .chip[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+  .palette{ display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .palette button{ width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .palette button[aria-pressed="true"]{ border-color: var(--ink); }
+  .palette-more{
+    width: 22px; height: 22px; border-radius: 50%; position: relative; overflow: hidden; cursor: pointer;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border: 2px solid transparent; flex: none;
+  }
+  .palette-more input[type="color"]{ position: absolute; inset: -6px; opacity: 0; cursor: pointer; border: none; padding: 0; }
+
+  .btn{ border: none; border-radius: 10px; padding: 13px 16px; font-size: 14.5px; font-weight: 500; cursor: pointer; width: 100%; }
+  .btn.primary{ background: var(--accent); color: var(--accent-ink); }
+  .btn.ghost{ background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .btn.danger-ghost{ background: none; color: var(--danger); text-decoration: underline; text-underline-offset: 3px; }
+
+  .skin-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(78px,1fr)); gap: 10px; }
+  .skin-opt{
+    display: flex; flex-direction: column; align-items: center; gap: 6px; background: none;
+    border: 1px solid var(--rule-strong); border-radius: 10px; padding: 10px 6px; cursor: pointer; color: var(--ink); position: relative;
+  }
+  .skin-opt.active{ border-color: var(--accent); }
+  .skin-opt.locked{ opacity: .55; cursor: not-allowed; }
+  .skin-opt .preview{ width: 36px; height: 36px; border-radius: 50%; }
+  .skin-opt .name{ font-size: 10.5px; }
+  .skin-opt .lock{ position: absolute; top: 4px; right: 6px; font-family: "IBM Plex Mono", monospace; font-size: 8.5px; color: var(--danger); }
+
+  .chest-open{ text-align: center; padding: 20px 0; }
+  .chest-open .icon{ font-size: 64px; display: block; margin-bottom: 10px; }
+  .chest-open .icon.pop{ animation: pop .5s ease; }
+  @keyframes pop{ 0%{ transform: scale(.6); } 60%{ transform: scale(1.15); } 100%{ transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce){ .chest-open .icon.pop{ animation: none; } }
+  .chest-open .amount{ font-family: "IBM Plex Mono", monospace; font-size: 22px; color: var(--gold); }
+
+  .demo{ border-top: 1px dashed var(--rule-strong); padding-top: 10px; margin-top: 4px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); }
+  .demo summary{ cursor: pointer; }
+  .demo-row{ display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+  .demo button.mini{ font-family: inherit; font-size: 11px; background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+
+  .toast{
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper);
+    padding: 9px 16px; border-radius: 20px; font-size: 12.5px; z-index: 40; opacity: 0; transition: opacity .25s ease; pointer-events: none;
+  }
+  .toast.show{ opacity: 1; }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="app">
+  <header class="topbar">
+    <div class="top-cluster">
+      <span class="pill currency" id="currencyPill" title="Moneda">🪙 0</span>
+      <span class="pill streak" id="streakPill" title="Racha de días">🔥 0</span>
+    </div>
+    <div class="top-cluster">
+      <button class="icon-btn" id="friendsBtn" title="Amigos">👥</button>
+      <button class="icon-btn" id="configBtn" title="Configuración">⚙</button>
+    </div>
+  </header>
+
+  <div class="chest-banner" id="chestBanner">
+    <div class="txt"><strong>Cofre de racha listo</strong>7 días seguidos — tocá para abrirlo</div>
+    <span class="go">abrir ›</span>
+  </div>
+
+  <div class="galaxy-panel">
+    <div class="panel-topleft">
+      <span class="panel-crumb" id="crumbLabel">Metas de estudio</span>
+      <button class="edit-parent" id="editParentBtn" style="display:none">editar ✎</button>
+    </div>
+    <span class="theme-picker" id="themePicker"></span>
+    <canvas id="sky"></canvas>
+    <div class="vignette"></div>
+    <div class="panel-bottom-row">
+      <button class="standard-corner" id="saveStandardBtn">Guardar como estándar</button>
+      <button class="reset-corner" id="resetLayoutBtn">Restablecer orden</button>
+    </div>
+  </div>
+
+  <div class="action-zone"><button class="big-action" id="bigActionBtn">Crear</button></div>
+  <div class="spacer"></div>
+  <nav class="navbar">
+    <button class="navitem active" data-nav="inicio"><span class="ic">✺</span>Inicio</button>
+    <button class="navitem" data-nav="cronometro"><span class="ic">◔</span>Cronómetro</button>
+    <button class="navitem" data-nav="calendario"><span class="ic">▦</span>Calendario</button>
+    <button class="navitem" data-nav="estadisticas"><span class="ic">▲</span>Progreso</button>
+    <button class="navitem" data-nav="tienda"><span class="ic">🛒</span>Tienda</button>
+  </nav>
+</div>
+
+<div id="sheetRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var NAV_URLS = {
+    cronometro: "https://claude.ai/code/artifact/1e916f2b-4bf7-487a-93ba-d77306e95735",
+    calendario: "https://claude.ai/code/artifact/25750d28-a627-431b-ba3c-b5980132cf46",
+    estadisticas: "https://claude.ai/code/artifact/9e0e1305-da90-4e06-bd70-035e21048e02"
+  };
+
+  var THEMES = [
+    { id:"crema",   name:"Papel crema",  paper:"#EFEDE5", ink:"#20241E", accent:"#3A6B54", muted:"#6E7368", rule:"#D5D1C1" },
+    { id:"pergamino", name:"Pergamino",  paper:"#E8DEC4", ink:"#3B2C1A", accent:"#8A5A2B", muted:"#8A7A5C", rule:"#CBBB90" },
+    { id:"anil",    name:"Tinta añil",   paper:"#E4E6ED", ink:"#1C2340", accent:"#35468C", muted:"#6A6F87", rule:"#C7CBDA" },
+    { id:"musgo",   name:"Musgo",        paper:"#E9ECE2", ink:"#212B1C", accent:"#4C7A3E", muted:"#737F68", rule:"#CBD3BE" },
+    { id:"noche",   name:"Papel noche",  paper:"#171A22", ink:"#E7E5DA", accent:"#7BA6B5", muted:"#8892A0", rule:"#2B3040" }
+  ];
+  var SKINS = [
+    { id:"liso", name:"Liso", locked:false },
+    { id:"anillado", name:"Anillado", locked:false },
+    { id:"rayado", name:"Rayado", locked:false },
+    { id:"puntillado", name:"Puntillado", locked:true },
+    { id:"cometa", name:"Cometa", locked:true }
+  ];
+  var TARGET_OPTIONS = [60, 90, 120, 180, 300, 420]; // minutos/semana
+  var IMPORTANCE_LEVELS = [
+    { id:"baja", name:"Baja", points:10 },
+    { id:"media", name:"Media", points:25 },
+    { id:"alta", name:"Alta", points:50 },
+    { id:"critica", name:"Crítica", points:100 }
+  ];
+  var PALETTE = ["#B06A3A","#4E6E8E","#7A6A9E","#A85C6B","#6B8F71","#C97A2B","#8A6FA3","#3A6B54","#9C4A3A","#2E7B84"];
+  var LAST_COLOR_KEY = "productvt-ultimo-color-v1";
+  function loadLastColor(){ try{ return localStorage.getItem(LAST_COLOR_KEY); }catch(e){ return null; } }
+  function saveLastColor(c){ try{ localStorage.setItem(LAST_COLOR_KEY, c); }catch(e){} }
+  var lastColor = loadLastColor();
+  function orderedPalette(){ return lastColor ? [lastColor].concat(PALETTE.filter(function(c){ return c!==lastColor; })) : PALETTE.slice(); }
+
+  var CATS_KEY = "productvt-categorias-v1";
+  var DEFAULT_CATEGORIES = [
+    { id: "mate", name: "Matemáticas", color: "#B06A3A", type: "productiva" },
+    { id: "lectura", name: "Lectura", color: "#4E6E8E", type: "productiva" },
+    { id: "codigo", name: "Código", color: "#7A6A9E", type: "productiva" },
+    { id: "idiomas", name: "Idiomas", color: "#A85C6B", type: "productiva" }
+  ];
+  function loadCategories(){
+    try{ var raw = localStorage.getItem(CATS_KEY); return raw ? JSON.parse(raw) : DEFAULT_CATEGORIES.slice(); }
+    catch(e){ return DEFAULT_CATEGORIES.slice(); }
+  }
+  var CATEGORIES = loadCategories();
+  var STUDY_CATS = CATEGORIES.filter(function(c){ return c.type === "productiva"; });
+  function catById(id){ return CATEGORIES.find(function(c){ return c.id === id; }) || STUDY_CATS[0]; }
+
+  var METAS_KEY = "productvt-metas-v1";
+  function loadMetas(){
+    try{ var raw = localStorage.getItem(METAS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+    var seed = seedMetas(); saveMetas(seed); return seed;
+  }
+  function seedMetas(){
+    var c0 = STUDY_CATS[0] && STUDY_CATS[0].id, c1 = STUDY_CATS[1] && STUDY_CATS[1].id, c3 = STUDY_CATS[3] && STUDY_CATS[3].id;
+    var colorOf = function(cid){ return catById(cid).color; };
+    return [
+      { id:"g-calc", name:"Dominar Cálculo", categoryId: c0, color: colorOf(c0), targetMinutes: 300, parentGoalId: null, temporality:"recurrente", importance:"alta" },
+      { id:"g-calc-1", name:"Practicar ejercicios", categoryId: c0, color: colorOf(c0), targetMinutes: 150, parentGoalId: "g-calc", temporality:"recurrente", importance:"media" },
+      { id:"g-calc-2", name:"Repasar teoría", categoryId: c0, color: colorOf(c0), targetMinutes: 90, parentGoalId: "g-calc", temporality:"recurrente", importance:"media" },
+      { id:"g-lectura", name:"Hábito de lectura", categoryId: c1, color: colorOf(c1), targetMinutes: 120, parentGoalId: null, temporality:"atemporal", importance:"baja" },
+      { id:"g-ingles", name:"Aprender inglés", categoryId: c3, color: colorOf(c3), targetMinutes: 180, parentGoalId: null, temporality:"recurrente", importance:"critica" },
+      { id:"g-ingles-1", name:"Practicar speaking", categoryId: c3, color: colorOf(c3), targetMinutes: 60, parentGoalId: "g-ingles", temporality:"recurrente", importance:"media" }
+    ];
+  }
+  function saveMetas(list){ try{ localStorage.setItem(METAS_KEY, JSON.stringify(list)); }catch(e){} }
+  var METAS = loadMetas();
+
+  // Capas (compartidas con el Calendario): una supermeta se puede enlazar a una capa en particular.
+  var CAPAS_KEY = "productvt-capas-v1";
+  function loadCapas(){
+    try{ var raw = localStorage.getItem(CAPAS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+    return [{ id: "cap-uni", name: "Universidad", color: "#4E6E8E" }];
+  }
+  var CAPAS = loadCapas();
+  function capaById(id){ return CAPAS.find(function(c){ return c.id === id; }); }
+  function metaById(id){ return METAS.find(function(m){ return m.id === id; }); }
+  function childrenOfGoal(id){ return METAS.filter(function(m){ return m.parentGoalId === id; }); }
+  function topLevelGoals(){ return METAS.filter(function(m){ return !m.parentGoalId; }); }
+
+  // ---- economía: moneda + racha + cofres (simulación local, ver nota en el panel de prueba) ----
+  var ECON_KEY = "productvt-economia-v1";
+  function loadEcon(){
+    try{ var raw = localStorage.getItem(ECON_KEY); return raw ? JSON.parse(raw) : { currency: 40, streak: 5, lastChestAtStreak: 0 }; }
+    catch(e){ return { currency: 40, streak: 5, lastChestAtStreak: 0 }; }
+  }
+  function saveEcon(){ try{ localStorage.setItem(ECON_KEY, JSON.stringify(econ)); }catch(e){} }
+  var econ = loadEcon();
+
+  var streakPill = document.getElementById("streakPill");
+  var currencyPill = document.getElementById("currencyPill");
+  var chestBanner = document.getElementById("chestBanner");
+
+  function chestReady(){ return econ.streak >= econ.lastChestAtStreak + 7; }
+  function renderEcon(){
+    streakPill.textContent = "🔥 " + econ.streak;
+    currencyPill.textContent = "🪙 " + econ.currency;
+    chestBanner.classList.toggle("show", chestReady());
+  }
+
+  var STORE_KEY = "productvt-galaxia-v1";
+  var store = loadStore();
+  function loadStore(){
+    try{ var raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : { standard:{}, themeByView:{}, skinByMeta:{} }; }
+    catch(e){ return { standard:{}, themeByView:{}, skinByMeta:{} }; }
+  }
+  function persistStore(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }catch(e){} }
+
+  var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var canvas = document.getElementById("sky");
+  var ctx = canvas.getContext("2d");
+  var crumbLabel = document.getElementById("crumbLabel");
+  var editParentBtn = document.getElementById("editParentBtn");
+  var themePickerEl = document.getElementById("themePicker");
+  var resetBtn = document.getElementById("resetLayoutBtn");
+  var toastEl = document.getElementById("toast");
+
+  var viewStack = [{ id: "root", name: "Metas de estudio" }];
+  var nodes = [];
+  var stars = [];
+  var dragging = null;
+  var moved = 0;
+  var dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function currentViewId(){ return viewStack[viewStack.length-1].id; }
+  function goalsInView(viewId){ return viewId === "root" ? topLevelGoals() : childrenOfGoal(viewId); }
+
+  function themeForView(viewId){ var idx = store.themeByView[viewId]; return THEMES[idx !== undefined ? idx : 0]; }
+  function applyTheme(theme){
+    var r = document.documentElement.style;
+    r.setProperty("--paper", theme.paper); r.setProperty("--ink", theme.ink);
+    r.setProperty("--accent", theme.accent); r.setProperty("--muted", theme.muted);
+    r.setProperty("--rule", theme.rule); r.setProperty("--focus", theme.accent);
+  }
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    seedStars();
+  }
+  window.addEventListener("resize", resizeCanvas);
+
+  function seedStars(){
+    var rect = canvas.getBoundingClientRect();
+    stars = [];
+    var count = Math.floor((rect.width*rect.height)/7000);
+    for(var i=0;i<count;i++) stars.push({ x: Math.random()*rect.width, y: Math.random()*rect.height, r: Math.random()*1.2+.3, phase: Math.random()*Math.PI*2 });
+  }
+
+  function buildView(){
+    var viewId = currentViewId();
+    var rect = canvas.getBoundingClientRect();
+    var goals = goalsInView(viewId);
+    var standard = store.standard[viewId] || {};
+    // No existen metas independientes: todo lo de primer nivel es una supermeta (aunque no tenga
+    // hijas todavía), y todo lo que vive dentro de una subgalaxia es una meta simple — máx. 2 niveles.
+    var isRoot = viewId === "root";
+    var cx = rect.width/2, cy = rect.height/2;
+    nodes = goals.map(function(g, i){
+      var saved = standard[g.id];
+      var homeX = saved ? saved.x*rect.width : cx;
+      var homeY = saved ? saved.y*rect.height : cy;
+      // sin estándar guardado, todos gravitan al mismo centro — el orden lo decide la repulsión
+      // (enlace fuerte + reordenamiento dinámico); un jitter mínimo rompe la simetría inicial.
+      var jitter = i * 137.5 * Math.PI / 180;
+      var startX = saved ? homeX : cx + Math.cos(jitter) * 6;
+      var startY = saved ? homeY : cy + Math.sin(jitter) * 6;
+      var kidCount = childrenOfGoal(g.id).length;
+      return {
+        id: g.id, name: g.name, isSuper: isRoot, kidCount: kidCount,
+        color: g.color || catById(g.categoryId).color, targetMinutes: g.targetMinutes,
+        x:startX, y:startY, vx:0, vy:0, homeX:homeX, homeY:homeY, r: isRoot?24:17,
+        skin: store.skinByMeta[g.id] || "liso"
+      };
+    });
+    applyTheme(themeForView(viewId));
+    crumbLabel.textContent = viewStack[viewStack.length-1].name;
+    editParentBtn.style.display = isRoot ? "none" : "inline-block";
+    renderThemePicker();
+    resizeCanvas();
+  }
+
+  function renderThemePicker(){
+    var viewId = currentViewId();
+    var activeIdx = store.themeByView[viewId] !== undefined ? store.themeByView[viewId] : 0;
+    themePickerEl.innerHTML = "";
+    THEMES.forEach(function(t,i){
+      var b = document.createElement("button");
+      b.className = "swatch-btn"+(i===activeIdx?" active":"");
+      b.style.background = t.paper; b.style.boxShadow = "inset 0 0 0 1px "+t.rule;
+      b.title = t.name; b.type = "button";
+      b.addEventListener("click", function(e){
+        e.stopPropagation();
+        store.themeByView[viewId] = i; persistStore(); applyTheme(THEMES[i]); renderThemePicker();
+      });
+      themePickerEl.appendChild(b);
+    });
+  }
+  function showToast(msg){
+    toastEl.textContent = msg; toastEl.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toastEl.classList.remove("show"); }, 1700);
+  }
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function drawPlanet(n){
+    var ink = cssVar("--ink"), paper = cssVar("--paper"), rule = cssVar("--rule");
+    if(n.isSuper){
+      ctx.beginPath(); ctx.ellipse(n.x, n.y, n.r+13, n.r+6, Math.PI/6, 0, Math.PI*2);
+      ctx.strokeStyle = rule; ctx.lineWidth = 1; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    var grad = ctx.createRadialGradient(n.x-n.r*.35, n.y-n.r*.35, n.r*.1, n.x, n.y, n.r);
+    grad.addColorStop(0, paper); grad.addColorStop(1, n.color);
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2); ctx.fillStyle = grad; ctx.fill();
+    ctx.lineWidth = 1.1; ctx.strokeStyle = ink; ctx.globalAlpha = .55; ctx.stroke(); ctx.globalAlpha = 1;
+
+    ctx.save(); ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2); ctx.clip();
+    if(n.skin === "rayado"){
+      ctx.strokeStyle = ink; ctx.globalAlpha = .3; ctx.lineWidth = 2;
+      for(var yy=n.y-n.r; yy<=n.y+n.r; yy+=5){ ctx.beginPath(); ctx.moveTo(n.x-n.r,yy); ctx.lineTo(n.x+n.r,yy); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    } else if(n.skin === "puntillado"){
+      ctx.fillStyle = ink; ctx.globalAlpha = .4;
+      for(var i=0;i<20;i++){ var a=Math.random()*Math.PI*2, rr=Math.random()*n.r; ctx.beginPath(); ctx.arc(n.x+Math.cos(a)*rr, n.y+Math.sin(a)*rr, .8, 0, Math.PI*2); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    } else if(n.skin === "cometa"){
+      ctx.strokeStyle = ink; ctx.globalAlpha = .25; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(n.x-n.r*1.8, n.y+n.r*.9); ctx.lineTo(n.x-n.r*.4, n.y+n.r*.1); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    if(n.isSuper){
+      ctx.beginPath(); ctx.arc(n.x+n.r*.72, n.y-n.r*.72, 7, 0, Math.PI*2);
+      ctx.fillStyle = paper; ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = ink; ctx.font = "500 8px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(n.kidCount), n.x+n.r*.72, n.y-n.r*.72+.5);
+    }
+
+    ctx.fillStyle = ink; ctx.font = "italic 400 11px 'Fraunces', Georgia, serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(n.name, n.x, n.y+n.r+6, 110);
+  }
+
+  function frame(t){
+    var rect = canvas.getBoundingClientRect();
+    var muted = cssVar("--muted");
+    ctx.clearRect(0,0,rect.width,rect.height);
+    stars.forEach(function(s){
+      var tw = reducedMotion ? .5 : (Math.sin(t/900+s.phase)*.35+.55);
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fillStyle = muted; ctx.globalAlpha = tw*.5; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // enlaces: cada planeta conectado al centro de su galaxia (personalización futura: invisible/color/skin)
+    ctx.strokeStyle = "rgba(255,255,255,.32)"; ctx.lineWidth = 1.6;
+    nodes.forEach(function(n){
+      ctx.beginPath(); ctx.moveTo(rect.width/2, rect.height/2); ctx.lineTo(n.x, n.y); ctx.stroke();
+    });
+
+    for(var i=0;i<nodes.length;i++){
+      for(var j=i+1;j<nodes.length;j++){
+        var a=nodes[i], b=nodes[j];
+        var dx=b.x-a.x, dy=b.y-a.y, dist=Math.max(Math.hypot(dx,dy),1);
+        var minDist = a.r+b.r+40;
+        if(dist < minDist){
+          var force = (minDist-dist)/minDist*0.6;
+          var fx=dx/dist*force, fy=dy/dist*force;
+          if(a!==dragging){ a.vx-=fx; a.vy-=fy; }
+          if(b!==dragging){ b.vx+=fx; b.vy+=fy; }
+        }
+      }
+    }
+    nodes.forEach(function(n){
+      if(n===dragging) return;
+      n.vx += (n.homeX-n.x)*0.012; n.vy += (n.homeY-n.y)*0.012;
+      n.vx *= 0.85; n.vy *= 0.85; n.x += n.vx; n.y += n.vy;
+    });
+    nodes.forEach(drawPlanet);
+    requestAnimationFrame(frame);
+  }
+
+  function toCanvasPoint(cx,cy){ var rect = canvas.getBoundingClientRect(); return { x: cx-rect.left, y: cy-rect.top }; }
+  function nodeAt(pt){ for(var i=nodes.length-1;i>=0;i--){ var n=nodes[i]; if(Math.hypot(pt.x-n.x,pt.y-n.y) <= n.r+4) return n; } return null; }
+
+  canvas.addEventListener("pointerdown", function(e){
+    var pt = toCanvasPoint(e.clientX,e.clientY); var n = nodeAt(pt);
+    if(!n) return;
+    dragging = n; moved = 0; canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    var pt = toCanvasPoint(e.clientX,e.clientY);
+    moved += Math.hypot(pt.x-dragging.x, pt.y-dragging.y);
+    dragging.x = pt.x; dragging.y = pt.y; dragging.vx = 0; dragging.vy = 0;
+  });
+  canvas.addEventListener("pointerup", function(){
+    if(!dragging) return;
+    canvas.classList.remove("dragging");
+    var n = dragging;
+    if(moved < 6){
+      onTapNode(n);
+    }
+    // si fue un arrastre real (no un tap), el nodo vuelve a gravitar solo a su lugar de siempre
+    // (el centro, o el estándar guardado) — para que quede fijo hay que "Guardar como estándar".
+    dragging = null;
+  });
+
+  function onTapNode(n){
+    // tocar CUALQUIER planeta abre primero su ficha (ahí se enlaza a una capa si es supermeta);
+    // entrar a la subgalaxia es una acción aparte, explícita, desde la propia ficha.
+    openMetaSheet(n.id);
+  }
+
+  function openMetaSheet(metaId){
+    var g = metaById(metaId);
+    var cat = catById(g.categoryId);
+    var current = store.skinByMeta[metaId] || "liso";
+    var temporalityLabel = { recurrente:"Recurrente", fecha:"Fecha específica", atemporal:"Atemporal" }[g.temporality] || "Recurrente";
+    var detail = cat.name + " · " + temporalityLabel + (g.targetMinutes ? " · " + g.targetMinutes + " min/semana" : "");
+    var importance = IMPORTANCE_LEVELS.find(function(l){ return l.id === g.importance; }) || IMPORTANCE_LEVELS[1];
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeSheet" type="button">cerrar</button>' +
+      '<h2>'+g.name+'</h2>' +
+      '<p><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+g.color+';margin-right:6px;vertical-align:middle"></span>'+detail+'</p>' +
+      (!g.parentGoalId ? '<button class="btn ghost" id="openSubgalaxy" type="button">Ver subgalaxia ('+childrenOfGoal(metaId).length+' metas)</button>' : '') +
+      (!g.parentGoalId ? '<div class="field"><label>Capa</label><select id="metaCapaSelect"><option value="">Sin capa</option>' +
+        CAPAS.map(function(c){ return '<option value="'+c.id+'" '+(c.id===g.capaId?"selected":"")+'>'+c.name+'</option>'; }).join("") + '</select></div>' : '') +
+      (g.completedAt
+        ? '<p style="color:var(--accent)">✓ Completada · ganaste '+importance.points+' puntos</p>'
+        : '<button class="btn primary" id="completeMeta" type="button">Marcar como completada · +'+importance.points+' pts</button>') +
+      '<div class="skin-grid" id="skinGrid"></div>' +
+      '<button class="btn danger-ghost" id="deleteMeta" type="button">Borrar esta meta</button>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    var subBtn = wrap.querySelector("#openSubgalaxy");
+    if(subBtn) subBtn.addEventListener("click", function(){
+      wrap.remove();
+      viewStack.push({ id: g.id, name: g.name });
+      buildView();
+    });
+    var capaSelect = wrap.querySelector("#metaCapaSelect");
+    if(capaSelect){
+      capaSelect.addEventListener("change", function(){
+        g.capaId = capaSelect.value || null;
+        saveMetas(METAS);
+        showToast(g.capaId ? "Enlazada a "+capaById(g.capaId).name : "Sin capa");
+      });
+    }
+    if(!g.completedAt){
+      wrap.querySelector("#completeMeta").addEventListener("click", function(){
+        g.completedAt = "demo";
+        saveMetas(METAS);
+        econ.currency += importance.points; saveEcon(); renderEcon();
+        wrap.remove(); openMetaSheet(metaId);
+        showToast("¡Completada! +" + importance.points + " puntos");
+      });
+    }
+    var grid = wrap.querySelector("#skinGrid");
+    SKINS.forEach(function(s){
+      var b = document.createElement("button");
+      b.className = "skin-opt"+(s.id===current?" active":"")+(s.locked?" locked":"");
+      b.type = "button";
+      b.innerHTML = '<span class="preview" style="'+skinPreviewCss(s.id, g.color)+'"></span><span class="name">'+s.name+'</span>'+(s.locked?'<span class="lock">Tienda</span>':'');
+      b.addEventListener("click", function(){
+        if(s.locked){ showToast("Disponible en la Tienda (V1.1)"); return; }
+        store.skinByMeta[metaId] = s.id; persistStore(); buildView(); wrap.remove();
+      });
+      grid.appendChild(b);
+    });
+    wrap.querySelector("#closeSheet").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#deleteMeta").addEventListener("click", function(){
+      if(!confirm('¿Borrar "'+g.name+'"? Si tiene metas hijas, también se borran.')) return;
+      var idsToRemove = [metaId].concat(childrenOfGoal(metaId).map(function(c){ return c.id; }));
+      METAS = METAS.filter(function(m){ return idsToRemove.indexOf(m.id) === -1; });
+      saveMetas(METAS); wrap.remove();
+      if(currentViewId() === metaId) viewStack.pop();
+      buildView();
+    });
+  }
+
+  function skinPreviewCss(id, accent){
+    var paper = cssVar("--paper"), ink = cssVar("--ink");
+    if(id === "rayado") return "background:repeating-linear-gradient("+accent+","+accent+" 3px,"+paper+" 3px,"+paper+" 6px)";
+    if(id === "anillado") return "background:radial-gradient(circle at 35% 35%,"+paper+","+accent+"); box-shadow: 0 0 0 2px "+ink+"22;";
+    if(id === "puntillado") return "background-image: radial-gradient("+ink+"55 1px, transparent 1.5px); background-size: 5px 5px; background-color:"+accent;
+    if(id === "cometa") return "background:linear-gradient(135deg,"+paper+","+accent+")";
+    return "background:radial-gradient(circle at 35% 35%,"+paper+","+accent+")";
+  }
+
+  // ---- popup del botón grande: Crear meta / Iniciar bloque ----
+  function openActionPopup(){
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeAction" type="button">cerrar</button>' +
+      '<h2>¿Qué querés hacer?</h2>' +
+      '<div class="choice-cards">' +
+        '<button class="choice-card" id="goCreateMeta" type="button"><span class="ic">✺</span><span><strong>Crear meta</strong><span>Una meta nueva o una supermeta con sus hijas</span></span></button>' +
+        '<button class="choice-card" id="goStartBlock" type="button"><span class="ic">◔</span><span><strong>Iniciar bloque</strong><span>Te lleva al Cronómetro</span></span></button>' +
+      '</div></div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.querySelector("#closeAction").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#goCreateMeta").addEventListener("click", function(){ wrap.remove(); openCreateSheet(); });
+    wrap.querySelector("#goStartBlock").addEventListener("click", function(){ window.location.href = NAV_URLS.cronometro; });
+  }
+
+  function openCreateSheet(){
+    var parentOptions = topLevelGoals();
+    var noSupermetasYet = parentOptions.length === 0;
+    var tipo = noSupermetasYet ? "supermeta" : "meta"; // meta | supermeta — no existen metas independientes: toda Meta necesita una Supermeta
+    var temporality = "recurrente";
+    var chosenTarget = 120;
+    var chosenImportance = "media";
+    // una Meta hereda por defecto el color de su Supermeta al crearse (editable después)
+    var chosenColor = (tipo === "meta" && parentOptions[0]) ? parentOptions[0].color : (lastColor || PALETTE[0]);
+
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeCreate" type="button">cerrar</button>' +
+      '<h2>Nueva meta</h2>' +
+      '<div class="field"><label>Tipo</label><div class="segmented" id="tipoSeg">' +
+        '<button type="button" data-tipo="meta" aria-pressed="'+(!noSupermetasYet)+'" '+(noSupermetasYet?"disabled":"")+'>Meta</button>' +
+        '<button type="button" data-tipo="supermeta" aria-pressed="'+noSupermetasYet+'">Supermeta</button>' +
+      '</div>' + (noSupermetasYet ? '<p style="font-size:11.5px">Todavía no tenés ninguna supermeta — no existen metas sueltas, así que la primera tiene que ser una supermeta.</p>' : '') + '</div>' +
+      '<div class="field"><label>Nombre</label><input type="text" id="newMetaName" placeholder="Ej: Terminar el curso de álgebra"></div>' +
+      '<div class="field"><label>Color</label><div class="palette" id="newMetaPalette">' + orderedPalette().map(function(c){
+        return '<button type="button" data-color="'+c+'" style="background:'+c+'" aria-pressed="'+(c===chosenColor)+'"></button>';
+      }).join("") + '<label class="palette-more" title="Elegir cualquier color (RGB)"><input type="color" id="newMetaColorPicker" value="'+chosenColor+'"></label></div></div>' +
+      '<div class="field"><label>Categoría</label><select id="newMetaCat">' + STUDY_CATS.map(function(c){ return '<option value="'+c.id+'">'+c.name+'</option>'; }).join("") + '</select></div>' +
+      '<div class="field" id="parentField" style="display:'+(tipo==="meta"?"flex":"none")+'"><label>Pertenece a</label><select id="newMetaParent">' +
+        parentOptions.map(function(p){ return '<option value="'+p.id+'">'+p.name+'</option>'; }).join("") + '</select></div>' +
+      '<div class="field" id="capaField" style="display:'+(tipo==="supermeta"?"flex":"none")+'"><label>Enlazar a una capa (opcional)</label><select id="newMetaCapa"><option value="">Sin capa</option>' +
+        CAPAS.map(function(c){ return '<option value="'+c.id+'">'+c.name+'</option>'; }).join("") + '</select></div>' +
+      '<div class="field"><label>Temporalidad</label><div class="segmented" id="temporalitySeg">' +
+        '<button type="button" data-t="recurrente" aria-pressed="true">Recurrente</button>' +
+        '<button type="button" data-t="fecha" aria-pressed="false">Fecha específica</button>' +
+        '<button type="button" data-t="atemporal" aria-pressed="false">Atemporal</button>' +
+      '</div></div>' +
+      '<div class="field" id="targetField"><label>Meta semanal</label><div class="chip-row" id="targetChips">' + TARGET_OPTIONS.map(function(m){
+        return '<button type="button" class="chip" data-min="'+m+'" aria-pressed="'+(m===120)+'">'+Math.round(m/60*10)/10+'h</button>';
+      }).join("") + '<button type="button" class="chip add" id="openCustomTarget">+ Otro</button></div>' +
+      '<div class="chip-row" id="customTargetRow" style="display:none;margin-top:8px"><input type="number" id="customTargetInput" min="1" max="1440" placeholder="min" style="width:70px;font-family:\'IBM Plex Mono\',monospace;font-size:12.5px;background:var(--paper-raised);color:var(--ink);border:1px solid var(--rule-strong);border-radius:6px;padding:5px 7px"><button type="button" class="mini-btn" id="useCustomTarget" style="border-radius:8px;border:1px solid var(--rule-strong);background:var(--paper-raised);color:var(--ink);padding:6px 10px;cursor:pointer">Usar</button></div></div>' +
+      '<div class="field" id="dateField" style="display:none"><label>Fecha</label><input type="date" id="newMetaDate"></div>' +
+      '<div class="field"><label>Importancia (define los puntos que ganás)</label><div class="chip-row" id="importanceChips">' + IMPORTANCE_LEVELS.map(function(l){
+        return '<button type="button" class="chip" data-imp="'+l.id+'" aria-pressed="'+(l.id==="media")+'">'+l.name+' · '+l.points+' pts</button>';
+      }).join("") + '</div></div>' +
+      '<p style="font-size:11.5px">Los puntos se ganan al completar esta meta, no ahora — marcala como completada desde su ficha cuando llegue el momento.</p>' +
+      '<button class="btn primary" id="confirmCreateMeta" type="button">Crear</button>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+
+    function seg(id, attr, val){
+      wrap.querySelectorAll("#"+id+" button").forEach(function(b){
+        b.addEventListener("click", function(){
+          if(b.disabled) return;
+          wrap.querySelectorAll("#"+id+" button").forEach(function(c){ c.setAttribute("aria-pressed", c===b); });
+          val(b.dataset[attr]);
+        });
+      });
+    }
+    seg("tipoSeg", "tipo", function(v){
+      tipo = v;
+      wrap.querySelector("#parentField").style.display = (v==="supermeta") ? "none" : "flex";
+      wrap.querySelector("#capaField").style.display = (v==="supermeta") ? "flex" : "none";
+    });
+    seg("temporalitySeg", "t", function(v){
+      temporality = v;
+      wrap.querySelector("#targetField").style.display = (v==="recurrente") ? "flex" : "none";
+      wrap.querySelector("#dateField").style.display = (v==="fecha") ? "flex" : "none";
+    });
+    wrap.querySelectorAll("#targetChips .chip:not(.add)").forEach(function(b){
+      b.addEventListener("click", function(){
+        chosenTarget = Number(b.dataset.min);
+        wrap.querySelectorAll("#targetChips .chip").forEach(function(c){ c.setAttribute("aria-pressed", c===b); });
+      });
+    });
+    wrap.querySelector("#openCustomTarget").addEventListener("click", function(){
+      wrap.querySelector("#customTargetRow").style.display = "flex";
+      wrap.querySelector("#customTargetInput").focus();
+    });
+    wrap.querySelector("#useCustomTarget").addEventListener("click", function(){
+      var v = Math.round(Number(wrap.querySelector("#customTargetInput").value));
+      if(!v || v < 1) return;
+      chosenTarget = Math.min(v, 1440);
+      wrap.querySelectorAll("#targetChips .chip").forEach(function(c){ c.setAttribute("aria-pressed", "false"); });
+      wrap.querySelector("#openCustomTarget").setAttribute("aria-pressed", "true");
+      wrap.querySelector("#openCustomTarget").textContent = chosenTarget + " min";
+      wrap.querySelector("#customTargetRow").style.display = "none";
+    });
+    wrap.querySelectorAll("#importanceChips .chip").forEach(function(b){
+      b.addEventListener("click", function(){
+        chosenImportance = b.dataset.imp;
+        wrap.querySelectorAll("#importanceChips .chip").forEach(function(c){ c.setAttribute("aria-pressed", c===b); });
+      });
+    });
+    wrap.querySelectorAll("#newMetaPalette button[data-color]").forEach(function(b){
+      b.addEventListener("click", function(){
+        chosenColor = b.dataset.color;
+        wrap.querySelectorAll("#newMetaPalette button[data-color]").forEach(function(c){ c.setAttribute("aria-pressed", c===b); });
+      });
+    });
+    wrap.querySelector("#newMetaColorPicker").addEventListener("change", function(e){ chosenColor = e.target.value; });
+
+    function syncColorTo(color){
+      chosenColor = color;
+      wrap.querySelectorAll("#newMetaPalette button[data-color]").forEach(function(c){ c.setAttribute("aria-pressed", c.dataset.color === color); });
+      wrap.querySelector("#newMetaColorPicker").value = color;
+    }
+    var parentSelect = wrap.querySelector("#newMetaParent");
+    if(parentSelect){
+      parentSelect.addEventListener("change", function(){
+        var p = parentOptions.find(function(o){ return o.id === parentSelect.value; });
+        if(p) syncColorTo(p.color);
+      });
+    }
+
+    wrap.querySelector("#closeCreate").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#confirmCreateMeta").addEventListener("click", function(){
+      var name = wrap.querySelector("#newMetaName").value.trim();
+      if(!name) return;
+      var parentId = (tipo === "meta") ? wrap.querySelector("#newMetaParent").value : null;
+      var newGoal = {
+        id: "g" + Date.now() + Math.random().toString(36).slice(2,6),
+        name: name, categoryId: wrap.querySelector("#newMetaCat").value, color: chosenColor,
+        targetMinutes: temporality === "recurrente" ? chosenTarget : null,
+        parentGoalId: parentId, temporality: temporality,
+        dueDate: temporality === "fecha" ? wrap.querySelector("#newMetaDate").value : null,
+        importance: chosenImportance,
+        capaId: (tipo === "supermeta" ? (wrap.querySelector("#newMetaCapa").value || null) : null)
+      };
+      METAS.push(newGoal); saveMetas(METAS);
+      lastColor = chosenColor; saveLastColor(chosenColor);
+      wrap.remove(); buildView();
+      showToast("Meta creada — vas a ganar puntos cuando la completes, no ahora");
+    });
+  }
+
+  // ---- Amigos: ilustrativo — quién está en línea ahora, con su racha (definido por el creador, pieza social real de V1.1) ----
+  var DEMO_FRIENDS = [
+    { name: "Cami", online: true, streak: 12 },
+    { name: "Tomás", online: true, streak: 3 },
+    { name: "Belén", online: false, streak: 27 }
+  ];
+  function openFriendsSheet(){
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeFriends" type="button">cerrar</button>' +
+      '<h2>Amigos</h2>' +
+      '<p>Quién está en línea ahora mismo (estudiando o con la app abierta). Tocá a alguien para ver sus estadísticas.</p>' +
+      '<div id="friendsList"></div>' +
+      '<p style="font-size:11px">Nombres de ejemplo — el sistema real necesita amistades entre cuentas y un mecanismo de presencia (todavía sin construir).</p>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    var list = wrap.querySelector("#friendsList");
+    DEMO_FRIENDS.forEach(function(f){
+      var row = document.createElement("button");
+      row.className = "choice-card";
+      row.type = "button";
+      row.style.padding = "10px 14px";
+      row.innerHTML = '<span class="ic" style="font-size:18px;color:'+(f.online?"var(--accent)":"var(--muted)")+'">●</span>' +
+        '<span><strong style="font-size:14px">'+f.name+'</strong><span>'+(f.online?"En línea":"Desconectado")+' · 🔥 '+f.streak+'</span></span>';
+      row.addEventListener("click", function(){ showToast(f.name + ": estadísticas — pendiente de construir"); });
+      list.appendChild(row);
+    });
+    wrap.querySelector("#closeFriends").addEventListener("click", function(){ wrap.remove(); });
+  }
+
+  function openChestSheet(){
+    if(!chestReady()){ showToast("Todavía no hay cofre listo"); return; }
+    var reward = 50;
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeChest" type="button">cerrar</button>' +
+      '<div class="chest-open"><span class="icon pop">🎁</span><h2>¡Cofre de 7 días!</h2><span class="amount">+' + reward + ' 🪙</span></div>' +
+      '<button class="btn primary" id="claimChest" type="button">Reclamar</button>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.querySelector("#closeChest").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#claimChest").addEventListener("click", function(){
+      econ.currency += reward; econ.lastChestAtStreak = econ.streak; saveEcon(); renderEcon();
+      wrap.remove(); showToast("Cofre reclamado");
+    });
+  }
+
+  resetBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    var viewId = currentViewId();
+    delete store.standard[viewId]; persistStore(); buildView();
+    showToast("Orden restablecido");
+  });
+  document.getElementById("saveStandardBtn").addEventListener("click", function(e){
+    e.stopPropagation();
+    var viewId = currentViewId();
+    var rect = canvas.getBoundingClientRect();
+    var snapshot = {};
+    nodes.forEach(function(n){ snapshot[n.id] = { x: n.x/rect.width, y: n.y/rect.height }; });
+    store.standard[viewId] = snapshot;
+    persistStore(); buildView();
+    showToast("Guardado como estándar de esta galaxia");
+  });
+  document.getElementById("bigActionBtn").addEventListener("click", openActionPopup);
+  document.getElementById("chestBanner").addEventListener("click", openChestSheet);
+  document.getElementById("friendsBtn").addEventListener("click", openFriendsSheet);
+  document.getElementById("configBtn").addEventListener("click", function(){
+    showToast("Ajustes viene al final, cuando el resto esté documentado");
+  });
+  document.querySelectorAll(".navitem").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var nav = btn.dataset.nav;
+      if(nav === "inicio") return;
+      if(nav === "tienda"){ showToast("Tienda: próxima pieza de diseño (skins, medallas, colección)"); return; }
+      var url = NAV_URLS[nav];
+      if(url) window.location.href = url;
+    });
+  });
+  crumbLabel.addEventListener("click", function(){ if(viewStack.length > 1){ viewStack.pop(); buildView(); } });
+  editParentBtn.addEventListener("click", function(){ openMetaSheet(currentViewId()); });
+
+  renderEcon();
+  buildView();
+  requestAnimationFrame(frame);
+
+  // llegar acá con ?action=create (p.ej. desde el botón "+" del Calendario) abre directo el
+  // mismo popup de "¿Qué querés hacer?" — así el Calendario reusa el flujo real, sin duplicarlo.
+  if(location.search.indexOf("action=create") !== -1) openActionPopup();
+})();
+</script>

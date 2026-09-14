@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+
+# Runtime/local lock files (no aportan al repo compartido)
+.claude/scheduled_tasks.lock
+
+# Node (por si algún día hay tooling fuera de productvt-beta/)
+node_modules/
+
+# productvt-beta/ trae su propio .gitignore (Expo/RN, node_modules, .env, credenciales, etc.)
+# y se respeta automáticamente al fusionarse como subtree.

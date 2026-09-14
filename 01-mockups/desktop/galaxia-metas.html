@@ -1,0 +1,595 @@
+<title>Atlas de Metas</title>
+<style>
+  :root{
+    --paper: #EFEDE5;
+    --ink: #20241E;
+    --muted: #6E7368;
+    --accent: #3A6B54;
+    --accent-ink: #F3F7F1;
+    --rule: #D5D1C1;
+    --rule-strong: #B9B4A0;
+    --danger: #9C4A3A;
+    --focus: #3A6B54;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    transition: background .5s ease, color .5s ease;
+  }
+  button{ font: inherit; }
+
+  .app{ height: 100vh; display: flex; flex-direction: column; }
+
+  .topbar{
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+    transition: border-color .5s ease;
+  }
+  .crumbs{
+    font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 480;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .crumbs button{
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font: inherit; padding: 2px 0;
+  }
+  .crumbs button:last-child{ color: var(--ink); cursor: default; }
+  .crumbs .sep{ color: var(--rule-strong); font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+
+  .controls{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .theme-picker{ display: flex; gap: 6px; }
+  .swatch-btn{
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent;
+    cursor: pointer; padding: 0;
+  }
+  .swatch-btn.active{ border-color: var(--ink); }
+
+  .mini-btn{
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+    background: none; color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 20px;
+    padding: 6px 12px; cursor: pointer; white-space: nowrap;
+  }
+  .mini-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .mini-btn:focus-visible, .swatch-btn:focus-visible, .crumbs button:focus-visible{
+    outline: 2px solid var(--focus); outline-offset: 2px;
+  }
+
+  canvas{ flex: 1; display: block; width: 100%; touch-action: none; cursor: grab; }
+  canvas.dragging{ cursor: grabbing; }
+
+  .hint{
+    text-align: center; font-size: 11.5px; color: var(--muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    padding: 8px 0 12px;
+  }
+
+  .overlay{
+    position: fixed; inset: 0; background: rgba(0,0,0,.35);
+    display: flex; align-items: flex-end; justify-content: center; z-index: 30;
+  }
+  .sheet{
+    background: var(--paper); border-top: 1px solid var(--rule);
+    width: 100%; max-width: 480px; border-radius: 18px 18px 0 0;
+    padding: 24px 22px 26px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .sheet h2{ font-family: "Fraunces", Georgia, serif; font-size: 20px; font-weight: 500; margin: 0; }
+  .sheet p{ font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .sheet .close{
+    align-self: flex-end; background: none; border: none; color: var(--muted);
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px;
+  }
+
+  .skin-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 10px; }
+  .skin-opt{
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    background: none; border: 1px solid var(--rule-strong); border-radius: 10px;
+    padding: 10px 6px; cursor: pointer; color: var(--ink); position: relative;
+  }
+  .skin-opt.active{ border-color: var(--accent); }
+  .skin-opt.locked{ opacity: .55; cursor: not-allowed; }
+  .skin-opt .preview{ width: 40px; height: 40px; border-radius: 50%; }
+  .skin-opt .name{ font-size: 11px; }
+  .skin-opt .lock{
+    position: absolute; top: 4px; right: 6px; font-family: "IBM Plex Mono", monospace; font-size: 9px; color: var(--danger);
+  }
+
+  .toast{
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper); padding: 9px 16px; border-radius: 20px;
+    font-size: 12.5px; z-index: 40; opacity: 0; transition: opacity .25s ease;
+    pointer-events: none;
+  }
+  .toast.show{ opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce){
+    body{ transition: none; }
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="app">
+  <header class="topbar">
+    <div class="crumbs" id="crumbs"></div>
+    <div class="controls">
+      <span class="theme-picker" id="themePicker"></span>
+      <button class="mini-btn" id="skinOfViewBtn" type="button" hidden>Skin de esta galaxia</button>
+      <button class="mini-btn" id="resetLayoutBtn" type="button">Restablecer orden</button>
+    </div>
+  </header>
+  <canvas id="sky"></canvas>
+  <div class="hint">Arrastrá un planeta para moverlo · tocá una supermeta para entrar en su subgalaxia · tocá una meta simple para personalizarla</div>
+</div>
+
+<div id="sheetRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var THEMES = [
+    { id:"crema",   name:"Papel crema",  paper:"#EFEDE5", ink:"#20241E", accent:"#3A6B54", muted:"#6E7368", rule:"#D5D1C1" },
+    { id:"pergamino", name:"Pergamino",  paper:"#E8DEC4", ink:"#3B2C1A", accent:"#8A5A2B", muted:"#8A7A5C", rule:"#CBBB90" },
+    { id:"anil",    name:"Tinta añil",   paper:"#E4E6ED", ink:"#1C2340", accent:"#35468C", muted:"#6A6F87", rule:"#C7CBDA" },
+    { id:"musgo",   name:"Musgo",        paper:"#E9ECE2", ink:"#212B1C", accent:"#4C7A3E", muted:"#737F68", rule:"#CBD3BE" },
+    { id:"noche",   name:"Papel noche",  paper:"#171A22", ink:"#E7E5DA", accent:"#7BA6B5", muted:"#8892A0", rule:"#2B3040" }
+  ];
+  var SKINS = [
+    { id:"liso", name:"Liso", locked:false },
+    { id:"anillado", name:"Anillado", locked:false },
+    { id:"rayado", name:"Rayado", locked:false },
+    { id:"puntillado", name:"Puntillado", locked:true },
+    { id:"cometa", name:"Cometa", locked:true }
+  ];
+  var METAS = {
+    "calc":     { name:"Dominar Cálculo", isSuper:true },
+    "calc-1":   { name:"20h de práctica", parent:"calc" },
+    "calc-2":   { name:"Aprobar el parcial", parent:"calc", status:"completed" },
+    "calc-3":   { name:"Resolver 50 ejercicios", parent:"calc" },
+    "lectura":  { name:"Hábito de lectura", isSuper:true },
+    "lectura-1":{ name:"Leer 12 libros este año", parent:"lectura" },
+    "lectura-2":{ name:"30 min diarios", parent:"lectura", status:"failed" },
+    "ingles":   { name:"Aprender inglés", isSuper:true },
+    "ingles-1": { name:"B2 en 6 meses", parent:"ingles" },
+    "ingles-2": { name:"Practicar speaking 3×/semana", parent:"ingles" },
+    "meditar":  { name:"Meditar 10 min diarios" }
+  };
+
+  var STORE_KEY = "productvt-galaxia-metas-v1";
+  var store = loadStore();
+  function loadStore(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : { positions:{}, themeByView:{}, skinByMeta:{} };
+    }catch(e){ return { positions:{}, themeByView:{}, skinByMeta:{} }; }
+  }
+  function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }catch(e){} }
+
+  var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  var canvas = document.getElementById("sky");
+  var ctx = canvas.getContext("2d");
+  var crumbsEl = document.getElementById("crumbs");
+  var themePickerEl = document.getElementById("themePicker");
+  var resetBtn = document.getElementById("resetLayoutBtn");
+  var skinOfViewBtn = document.getElementById("skinOfViewBtn");
+  var toastEl = document.getElementById("toast");
+
+  var viewStack = [{ id: "root", name: "Galaxia principal" }];
+  var nodes = [];
+  var stars = [];
+  var dragging = null;
+  var pointerDownPos = null;
+  var moved = 0;
+  var dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function currentViewId(){ return viewStack[viewStack.length - 1].id; }
+
+  function childrenOf(viewId){
+    var ids = [];
+    for(var id in METAS){
+      var m = METAS[id];
+      if(viewId === "root" ? !m.parent : m.parent === viewId) ids.push(id);
+    }
+    return ids;
+  }
+
+  function themeForView(viewId){
+    var idx = store.themeByView[viewId];
+    if(idx === undefined){
+      idx = (viewId === "root" && systemDark) ? 4 : 0;
+    }
+    return THEMES[idx] || THEMES[0];
+  }
+
+  function applyTheme(theme){
+    var r = document.documentElement.style;
+    r.setProperty("--paper", theme.paper);
+    r.setProperty("--ink", theme.ink);
+    r.setProperty("--accent", theme.accent);
+    r.setProperty("--muted", theme.muted);
+    r.setProperty("--rule", theme.rule);
+    r.setProperty("--focus", theme.accent);
+  }
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seedStars();
+  }
+  window.addEventListener("resize", resizeCanvas);
+
+  function seedStars(){
+    var rect = canvas.getBoundingClientRect();
+    stars = [];
+    var count = Math.floor((rect.width * rect.height) / 9000);
+    for(var i=0;i<count;i++){
+      stars.push({
+        x: Math.random() * rect.width,
+        y: Math.random() * rect.height,
+        r: Math.random() * 1.2 + .3,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  function defaultPosFor(index, total, rect){
+    var golden = 137.5 * Math.PI / 180;
+    var angle = index * golden;
+    var radius = 26 * Math.sqrt(index + 1);
+    var maxR = Math.min(rect.width, rect.height) * 0.38;
+    radius = Math.min(radius, maxR);
+    return { x: rect.width/2 + Math.cos(angle) * radius, y: rect.height/2 + Math.sin(angle) * radius };
+  }
+
+  function buildView(){
+    var viewId = currentViewId();
+    var rect = canvas.getBoundingClientRect();
+    var ids = childrenOf(viewId);
+    var overrides = store.positions[viewId] || {};
+    nodes = ids.map(function(id, i){
+      var meta = METAS[id];
+      var def = defaultPosFor(i, ids.length, rect);
+      var pos = overrides[id];
+      var x = pos ? pos.x * rect.width : def.x;
+      var y = pos ? pos.y * rect.height : def.y;
+      var kidCount = meta.isSuper ? childrenOf(id).length : 0;
+      return {
+        id: id, name: meta.name, isSuper: !!meta.isSuper, kidCount: kidCount,
+        x: x, y: y, vx: 0, vy: 0, homeX: x, homeY: y,
+        r: meta.isSuper ? 26 : 18,
+        skin: store.skinByMeta[id] || "liso",
+        status: meta.status || "activa"
+      };
+    });
+    applyTheme(themeForView(viewId));
+    renderCrumbs();
+    renderThemePicker();
+    skinOfViewBtn.hidden = viewId === "root";
+    resizeCanvas();
+  }
+
+  function renderCrumbs(){
+    crumbsEl.innerHTML = "";
+    viewStack.forEach(function(v, i){
+      if(i > 0){
+        var sep = document.createElement("span");
+        sep.className = "sep"; sep.textContent = "›";
+        crumbsEl.appendChild(sep);
+      }
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = v.name;
+      if(i < viewStack.length - 1){
+        btn.addEventListener("click", function(){
+          viewStack = viewStack.slice(0, i + 1);
+          buildView();
+        });
+      }
+      crumbsEl.appendChild(btn);
+    });
+  }
+
+  function renderThemePicker(){
+    var viewId = currentViewId();
+    var activeIdx = store.themeByView[viewId] !== undefined ? store.themeByView[viewId] : (viewId === "root" && systemDark ? 4 : 0);
+    themePickerEl.innerHTML = "";
+    THEMES.forEach(function(t, i){
+      var b = document.createElement("button");
+      b.className = "swatch-btn" + (i === activeIdx ? " active" : "");
+      b.style.background = t.paper;
+      b.style.boxShadow = "inset 0 0 0 1px " + t.rule;
+      b.title = t.name;
+      b.type = "button";
+      b.addEventListener("click", function(){
+        store.themeByView[viewId] = i;
+        persist();
+        applyTheme(THEMES[i]);
+        renderThemePicker();
+        showToast("Fondo: " + t.name);
+      });
+      themePickerEl.appendChild(b);
+    });
+  }
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
+  }
+
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function drawPlanet(n){
+    var ink = cssVar("--ink"), accent = cssVar("--accent"), paper = cssVar("--paper"), muted = cssVar("--muted"), rule = cssVar("--rule");
+
+    if(n.status === "completed"){
+      var glow = ctx.createRadialGradient(n.x, n.y, n.r*0.6, n.x, n.y, n.r*2.4);
+      glow.addColorStop(0, accent + "55");
+      glow.addColorStop(1, accent + "00");
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r*2.4, 0, Math.PI*2);
+      ctx.fillStyle = glow;
+      ctx.fill();
+    }
+
+    if(n.isSuper){
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y, n.r + 14, n.r + 7, Math.PI/6, 0, Math.PI*2);
+      ctx.strokeStyle = rule;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    var grad = ctx.createRadialGradient(n.x - n.r*0.35, n.y - n.r*0.35, n.r*0.1, n.x, n.y, n.r);
+    grad.addColorStop(0, paper);
+    grad.addColorStop(1, accent);
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = .55;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+    ctx.clip();
+    if(n.skin === "rayado"){
+      ctx.strokeStyle = ink; ctx.globalAlpha = .3; ctx.lineWidth = 2;
+      for(var yy = n.y - n.r; yy <= n.y + n.r; yy += 5){
+        ctx.beginPath(); ctx.moveTo(n.x - n.r, yy); ctx.lineTo(n.x + n.r, yy); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if(n.skin === "puntillado"){
+      ctx.fillStyle = ink; ctx.globalAlpha = .4;
+      for(var i=0;i<26;i++){
+        var a = Math.random()*Math.PI*2, rr = Math.random()*n.r;
+        ctx.beginPath(); ctx.arc(n.x + Math.cos(a)*rr, n.y + Math.sin(a)*rr, .8, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if(n.skin === "cometa"){
+      ctx.strokeStyle = ink; ctx.globalAlpha = .25; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(n.x - n.r*1.8, n.y + n.r*0.9); ctx.lineTo(n.x - n.r*0.4, n.y + n.r*0.1); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    if(n.status === "failed"){
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = paper;
+      ctx.globalAlpha = .55;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    if(n.status === "completed" || n.status === "failed"){
+      var bx = n.x - n.r*0.72, by = n.y - n.r*0.72;
+      ctx.beginPath();
+      ctx.arc(bx, by, 8, 0, Math.PI*2);
+      ctx.fillStyle = n.status === "completed" ? accent : muted;
+      ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = paper; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+      ctx.beginPath();
+      if(n.status === "completed"){
+        ctx.moveTo(bx-3, by); ctx.lineTo(bx-1, by+2.5); ctx.lineTo(bx+3.5, by-3);
+      } else {
+        ctx.moveTo(bx-2.5, by-2.5); ctx.lineTo(bx+2.5, by+2.5);
+        ctx.moveTo(bx+2.5, by-2.5); ctx.lineTo(bx-2.5, by+2.5);
+      }
+      ctx.stroke();
+    }
+
+    if(n.isSuper){
+      ctx.beginPath();
+      ctx.arc(n.x + n.r*0.72, n.y - n.r*0.72, 8, 0, Math.PI*2);
+      ctx.fillStyle = paper;
+      ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.font = "500 9px 'IBM Plex Mono', monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(n.kidCount), n.x + n.r*0.72, n.y - n.r*0.72 + .5);
+    }
+
+    ctx.fillStyle = ink;
+    ctx.font = "italic 400 13px 'Fraunces', Georgia, serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(n.name, n.x, n.y + n.r + 8, 150);
+  }
+
+  function frame(t){
+    var rect = canvas.getBoundingClientRect();
+    var ink = cssVar("--ink"), muted = cssVar("--muted");
+
+    ctx.clearRect(0,0,rect.width, rect.height);
+
+    stars.forEach(function(s){
+      var tw = reducedMotion ? .5 : (Math.sin(t/900 + s.phase) * .35 + .55);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = muted;
+      ctx.globalAlpha = tw * .5;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.beginPath();
+    ctx.arc(rect.width/2, rect.height/2, Math.min(rect.width,rect.height)*0.42, 0, Math.PI*2);
+    ctx.strokeStyle = cssVar("--rule");
+    ctx.globalAlpha = .5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    for(var i=0;i<nodes.length;i++){
+      for(var j=i+1;j<nodes.length;j++){
+        var a = nodes[i], b = nodes[j];
+        var dx = b.x - a.x, dy = b.y - a.y;
+        var dist = Math.max(Math.hypot(dx,dy), 1);
+        var minDist = a.r + b.r + 46;
+        if(dist < minDist){
+          var force = (minDist - dist) / minDist * 0.6;
+          var fx = dx/dist * force, fy = dy/dist * force;
+          if(a !== dragging){ a.vx -= fx; a.vy -= fy; }
+          if(b !== dragging){ b.vx += fx; b.vy += fy; }
+        }
+      }
+    }
+    nodes.forEach(function(n){
+      if(n === dragging) return;
+      n.vx += (n.homeX - n.x) * 0.02;
+      n.vy += (n.homeY - n.y) * 0.02;
+      n.vx *= 0.85; n.vy *= 0.85;
+      n.x += n.vx; n.y += n.vy;
+    });
+
+    nodes.forEach(drawPlanet);
+    requestAnimationFrame(frame);
+  }
+
+  function toCanvasPoint(clientX, clientY){
+    var rect = canvas.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function nodeAt(pt){
+    for(var i=nodes.length-1;i>=0;i--){
+      var n = nodes[i];
+      if(Math.hypot(pt.x-n.x, pt.y-n.y) <= n.r + 4) return n;
+    }
+    return null;
+  }
+
+  canvas.addEventListener("pointerdown", function(e){
+    var pt = toCanvasPoint(e.clientX, e.clientY);
+    var n = nodeAt(pt);
+    if(!n) return;
+    dragging = n;
+    pointerDownPos = pt;
+    moved = 0;
+    canvas.classList.add("dragging");
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    var pt = toCanvasPoint(e.clientX, e.clientY);
+    moved += Math.hypot(pt.x - dragging.x, pt.y - dragging.y);
+    dragging.x = pt.x; dragging.y = pt.y;
+    dragging.vx = 0; dragging.vy = 0;
+  });
+  canvas.addEventListener("pointerup", function(e){
+    if(!dragging) return;
+    canvas.classList.remove("dragging");
+    var n = dragging;
+    var rect = canvas.getBoundingClientRect();
+    if(moved < 6){
+      onTapNode(n);
+    } else {
+      n.homeX = n.x; n.homeY = n.y;
+      var viewId = currentViewId();
+      store.positions[viewId] = store.positions[viewId] || {};
+      store.positions[viewId][n.id] = { x: n.x / rect.width, y: n.y / rect.height };
+      persist();
+    }
+    dragging = null;
+  });
+
+  function onTapNode(n){
+    if(n.isSuper){
+      viewStack.push({ id: n.id, name: n.name });
+      buildView();
+    } else {
+      openSkinSheet(n.id, n.name, false);
+    }
+  }
+
+  function openSkinSheet(metaId, title, isViewSkin){
+    var wrap = document.createElement("div");
+    wrap.className = "overlay";
+    var current = store.skinByMeta[metaId] || "liso";
+    wrap.innerHTML = '<div class="sheet">' +
+      '<button class="close" id="closeSheet" type="button">cerrar</button>' +
+      '<h2>' + title + '</h2>' +
+      '<p>Elegí cómo se ve ' + (isViewSkin ? "esta supermeta" : "este planeta") + '.</p>' +
+      '<div class="skin-grid" id="skinGrid"></div>' +
+      '</div>';
+    document.getElementById("sheetRoot").appendChild(wrap);
+    var grid = wrap.querySelector("#skinGrid");
+    SKINS.forEach(function(s){
+      var b = document.createElement("button");
+      b.className = "skin-opt" + (s.id === current ? " active" : "") + (s.locked ? " locked" : "");
+      b.type = "button";
+      b.innerHTML = '<span class="preview" style="' + skinPreviewCss(s.id) + '"></span><span class="name">' + s.name + '</span>' + (s.locked ? '<span class="lock">Tienda</span>' : '');
+      b.addEventListener("click", function(){
+        if(s.locked){ showToast("Disponible en la Tienda (V1.1)"); return; }
+        store.skinByMeta[metaId] = s.id;
+        persist();
+        buildView();
+        wrap.remove();
+      });
+      grid.appendChild(b);
+    });
+    wrap.querySelector("#closeSheet").addEventListener("click", function(){ wrap.remove(); });
+  }
+
+  function skinPreviewCss(id){
+    var accent = cssVar("--accent"), paper = cssVar("--paper"), ink = cssVar("--ink");
+    if(id === "rayado") return "background:repeating-linear-gradient(" + accent + "," + accent + " 3px," + paper + " 3px," + paper + " 6px)";
+    if(id === "anillado") return "background:radial-gradient(circle at 35% 35%," + paper + "," + accent + "); box-shadow: 0 0 0 2px " + ink + "22, inset 0 0 0 8px transparent;";
+    if(id === "puntillado") return "background-image: radial-gradient(" + ink + "55 1px, transparent 1.5px); background-size: 5px 5px; background-color:" + accent;
+    if(id === "cometa") return "background:linear-gradient(135deg," + paper + "," + accent + ")";
+    return "background:radial-gradient(circle at 35% 35%," + paper + "," + accent + ")";
+  }
+
+  resetBtn.addEventListener("click", function(){
+    var viewId = currentViewId();
+    delete store.positions[viewId];
+    persist();
+    buildView();
+    showToast("Orden restablecido");
+  });
+  skinOfViewBtn.addEventListener("click", function(){
+    var viewId = currentViewId();
+    openSkinSheet(viewId, viewStack[viewStack.length-1].name, true);
+  });
+
+  buildView();
+  requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,543 @@
+<title>Bitácora de Decisiones</title>
+<style>
+  :root{
+    --paper: #EFEDE5;
+    --paper-raised: #FAF9F3;
+    --ink: #20241E;
+    --muted: #6E7368;
+    --accent: #3A6B54;
+    --accent-ink: #F3F7F1;
+    --accent-soft: #DCE6DC;
+    --rule: #D5D1C1;
+    --rule-strong: #B9B4A0;
+    --danger: #9C4A3A;
+    --focus: #3A6B54;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F;
+      --paper-raised: #1B1F16;
+      --ink: #E9E7DC;
+      --muted: #949A88;
+      --accent: #7BB596;
+      --accent-ink: #10241A;
+      --accent-soft: #223429;
+      --rule: #2B3225;
+      --rule-strong: #3C4433;
+      --danger: #D08871;
+      --focus: #7BB596;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F;
+    --paper-raised: #1B1F16;
+    --ink: #E9E7DC;
+    --muted: #949A88;
+    --accent: #7BB596;
+    --accent-ink: #10241A;
+    --accent-soft: #223429;
+    --rule: #2B3225;
+    --rule-strong: #3C4433;
+    --danger: #D08871;
+    --focus: #7BB596;
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .88em;
+    background: var(--accent-soft);
+    color: var(--ink);
+    padding: 1px 4px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .page{
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  header.top{
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--paper);
+    padding: 14px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .top .mark{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .top .track{
+    flex: 1;
+    height: 2px;
+    background: var(--rule);
+    position: relative;
+    overflow: hidden;
+  }
+  .top .track i{
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width .4s ease;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .top .track i{ transition: none; }
+  }
+
+  button.copy-btn{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    letter-spacing: .01em;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    color: var(--ink);
+    padding: 8px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button.copy-btn.primary{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  button.copy-btn:hover{ border-color: var(--accent); }
+  button.copy-btn:focus-visible,
+  textarea:focus-visible,
+  .reset-link:focus-visible{
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .intro{
+    padding: 36px 0 8px;
+  }
+  .intro h1{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 480;
+    font-size: clamp(28px, 5vw, 38px);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 12px;
+  }
+  .intro p{
+    color: var(--muted);
+    max-width: 68ch;
+    margin: 0 0 4px;
+    font-size: 15px;
+  }
+
+  .section-heading{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin: 48px 0 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .section-heading:first-of-type{ margin-top: 40px; }
+
+  .item{
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 4px 14px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .item .num{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--muted);
+    padding-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .item .q{
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 450;
+    font-size: 19px;
+    line-height: 1.4;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+  .item .ctx{
+    font-size: 14px;
+    color: var(--ink);
+    opacity: .8;
+    line-height: 1.55;
+    margin: 0 0 10px;
+    max-width: 66ch;
+  }
+  .item .why{
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin: 0 0 16px;
+    max-width: 66ch;
+  }
+  .item .why .tag{
+    font-style: normal;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    color: var(--accent);
+    font-size: 11.5px;
+  }
+  .item .answer-wrap{
+    grid-column: 2;
+    position: relative;
+  }
+  textarea{
+    width: 100%;
+    resize: none;
+    overflow: hidden;
+    min-height: 30px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    border: none;
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 8px 0;
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  textarea::placeholder{ color: var(--muted); opacity: .7; }
+  .item.answered .num{ color: var(--accent); }
+
+  .bottom-bar{
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    padding: 14px 0;
+    margin-top: 8px;
+  }
+  .reset-link{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 4px;
+  }
+  .reset-link:hover{ color: var(--danger); }
+
+  .status{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="page">
+  <header class="top">
+    <span class="mark" id="progressLabel">0 / 0</span>
+    <div class="track"><i id="progressFill"></i></div>
+    <button class="copy-btn primary" id="copyBtn" type="button">Copiar respuestas</button>
+  </header>
+
+  <div class="intro">
+    <h1>Bitácora de decisiones</h1>
+    <p>Preguntas que quedaron abiertas al revisar el prompt original, SPEC.md, ARCHITECTURE.md e IMPLEMENTATION_PLAN.md de Productvt Beta, antes de avanzar a mockups o código.</p>
+    <p>Cada una señala una contradicción, un vacío o una ambigüedad concreta entre documentos — no proponen solución, piden una decisión puntual. Tu respuesta se guarda sola en este navegador a medida que escribes.</p>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="bottom-bar">
+    <span class="status" id="saveStatus">&nbsp;</span>
+    <button class="reset-link" id="resetBtn" type="button">Borrar todas las respuestas</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var QUESTIONS = [
+    { section: "Reglas de negocio del cronómetro",
+      q: `¿Existe (o debe existir) una forma de terminar una sesión voluntariamente conservando el tiempo ya estudiado, sin pasar por la cancelación (que borra todo)?`,
+      ctx: `La máquina de estados del cronómetro (SPEC §15.3) nunca documenta una transición hacia "sesión completada con éxito": solo hay caminos hacia break, study, lunch, cancelled o expired.`,
+      why: `sin un camino explícito a "completado", el único cierre con reglas claras es la cancelación, que elimina todo el progreso y no suma estadísticas — contrario al objetivo central de medir honestamente el estudio efectivo.` },
+    { section: "Reglas de negocio del cronómetro",
+      q: `Cuando una sesión expira por no responder a tiempo, ¿se pierde solo el ciclo actual o también todo el tiempo efectivo de estudio acumulado en ciclos previos del mismo bloque?`,
+      ctx: `SPEC §20.4 dice explícitamente que las sesiones <code>cancelled</code> no suman a estadísticas, pero nunca aclara qué pasa con las <code>expired</code>, aunque ambas comparten el campo <code>effectiveStudySeconds</code>.`,
+      why: `perder 75+ minutos reales de estudio por no tocar la pantalla en 30 segundos es una penalización severa que cambia por completo cómo debe comunicarse la pérdida del bloque en la UI.` },
+    { section: "Reglas de negocio del cronómetro",
+      q: `¿Qué ventana de espera —30 segundos o 10 minutos— aplica a cada estado concreto de espera del cronómetro?`,
+      ctx: `SPEC §19.3 reconoce la regla como "resolución de diseño para V1" pero no especifica si <code>study_completed_waiting_response</code> usa los 30 segundos del flujo de descanso o los 10 minutos genéricos, ni si el panel de <code>break_selection</code> tiene límite de tiempo o es indefinido.`,
+      why: `sin esta definición exacta no se puede implementar la máquina de estados sin adivinar, arriesgando matar bloques de forma injusta o dejar sesiones colgadas indefinidamente.` },
+    { section: "Reglas de negocio del cronómetro",
+      q: `¿El temporizador inverso se detiene automáticamente al llegar a la duración objetivo, o sigue corriendo hasta que el usuario presiona "Finalizar"?`,
+      ctx: `El prompt original solo describe finalización manual, pero SPEC §21.5 agrega una segunda condición ambigua ("al finalizar manualmente o completar duración, se guarda el bloque").`,
+      why: `son dos productos de UX distintos — uno necesita una alarma de fin como en el modo estudio, el otro es un simple registro de referencia sin límite real.` },
+    { section: "Reglas de negocio del cronómetro",
+      q: `¿Cuántas veces se puede usar el botón de "Almuerzo" (45 min sin matar el bloque) dentro de un mismo bloque de estudio?`,
+      ctx: `Ni el prompt original ni SPEC §18 especifican un límite ni un cooldown.`,
+      why: `si es ilimitado, el usuario puede acumular descansos de 45 minutos indefinidamente sin estudiar, devaluando la disciplina que el cronómetro busca imponer.` },
+
+    { section: "Categorías, colores y metas",
+      q: `Al cambiar el color de una categoría, ¿deben recolorearse los bloques/eventos ya guardados, o deben conservar el color con el que fueron creados?`,
+      ctx: `El prompt original pide explícitamente que el cambio de color "actualice automáticamente el resto de eventos de esa categoría", pero SPEC §12.4 decide lo contrario e introduce un <code>colorSnapshot</code> inmutable que preserva el histórico, calificándolo de "decisión de diseño".`,
+      why: `es una contradicción directa entre lo pedido originalmente y lo formalizado como regla obligatoria, y afecta tanto el modelo de datos (si se necesita <code>colorSnapshot</code> por sesión) como el comportamiento visual del calendario e historial.` },
+    { section: "Categorías, colores y metas",
+      q: `¿Un mes sin ninguna meta configurada debe mostrar la estrella mensual o no?`,
+      ctx: `La regla de SPEC §26.5 otorga la estrella si "todas las semanas cerradas con metas configuradas fueron completadas", condición que se cumple vacíamente cuando no hubo ninguna meta ese mes.`,
+      why: `otorgar la estrella por no haberse propuesto ninguna meta contradice el propósito motivacional del indicador y puede generar una vista anual engañosa.` },
+
+    { section: "Arquitectura del código: coherencia entre documentos",
+      q: `¿Dónde deben vivir <code>StudySessionCoordinator</code> y <code>ActiveTimerRecoveryService</code>, y qué se hace con la carpeta <code>application/</code> de ARCHITECTURE.md?`,
+      ctx: `ARCHITECTURE.md los define como responsables de iniciar/recuperar sesiones dentro de <code>application/</code>, pero IMPLEMENTATION_PLAN.md no crea ningún archivo ahí en sus 12 fases ni los menciona en ninguna lista de archivos — a diferencia de <code>StatsAssemblerService</code>/<code>CalendarAssemblerService</code>, que sí sobrevivieron reubicados en <code>features/*/services/</code>.`,
+      why: `sin esta definición, la lógica de recuperación de sesión activa y coordinación de bloques (crítica según SPEC §31 y §34.3) puede terminar dispersa en componentes UI o en el store, justo lo que la arquitectura prohíbe.` },
+    { section: "Arquitectura del código: coherencia entre documentos",
+      q: `¿Es intencional que Categorías, Presets, Settings y User accedan a Firestore directamente desde el service, sin repositorio intermedio?`,
+      ctx: `ARCHITECTURE.md §15.1 exige repositorios dedicados para todos los agregados y §15.3 prohíbe que cualquier componente hable directo con Firestore, pero en IMPLEMENTATION_PLAN.md Fase 3 (<code>category-service.ts</code>, <code>preset-service.ts</code>, <code>settings-service.ts</code>) no hay repositorio, mientras que Sessions, Events y Goals sí lo tienen.`,
+      why: `es una violación directa de una regla arquitectónica explícita que pasaría desapercibida porque el plan no la señala como excepción ni la corrige.` },
+    { section: "Arquitectura del código: coherencia entre documentos",
+      q: `¿La carpeta <code>screens/</code> de ARCHITECTURE.md debe eliminarse por no usarse, o tiene un propósito distinto que el plan debería empezar a poblar?`,
+      ctx: `ARCHITECTURE.md §5 la define como uno de tres hogares posibles para la UI, pero IMPLEMENTATION_PLAN.md nunca crea un solo archivo ahí en sus 12 fases: toda la UI termina en <code>app/(tabs)/*.tsx</code> y <code>features/*/components/*.tsx</code>.`,
+      why: `una carpeta definida en la arquitectura pero nunca poblada genera ambigüedad real sobre dónde crear cada componente de pantalla y puede llevar a que cada fase invente su propia convención.` },
+
+    { section: "Modelo de datos y nomenclatura de entidades",
+      q: `¿Cuál es el nombre canónico del contador de recordatorios: <code>remindersTriggered</code> (SPEC §22.3) o <code>reminderCount</code> (ARCHITECTURE.md §9.5, interfaz <code>InverseSession</code>)?`,
+      why: `nombres distintos para el mismo campo entre SPEC y ARCHITECTURE pueden producir código inconsistente entre el mapper de Firestore y las validaciones de dominio, generando bugs de tipado silenciosos.` },
+    { section: "Modelo de datos y nomenclatura de entidades",
+      q: `¿Debe actualizarse la interfaz <code>StudySession</code> de ARCHITECTURE.md §9.4 para incluir <code>customBreakSelections[]</code>, <code>completionReason</code> y <code>deviceInfo</code>, y unificar <code>sessionStatus</code>/<code>status</code> en un solo nombre?`,
+      ctx: `SPEC §22.2 exige esos campos como "datos mínimos" y usa <code>sessionStatus</code>, mientras que la interfaz de ARCHITECTURE.md los omite y usa <code>status</code> (que coincide con SPEC §41.4, revelando además una inconsistencia interna del propio SPEC).`,
+      why: `ARCHITECTURE.md es el documento que se usa para tipar entidades ante Gemini; si la interfaz está incompleta, la sesión se guardará sin trazabilidad de cómo terminó ni qué descansos personalizados eligió el usuario.` },
+    { section: "Modelo de datos y nomenclatura de entidades",
+      q: `¿La diferencia entre <code>startedAt</code>/<code>endedAt</code> (<code>StudySession</code>, <code>InverseSession</code>) y <code>startAt</code>/<code>endAt</code> (<code>InvisibleEvent</code>, <code>CalendarItemViewModel</code>) es intencional (evento planificado vs. sesión registrada) o debe unificarse?`,
+      why: `una convención de naming que cambia entidad por entidad dentro del mismo documento es fuente típica de bugs de "undefined" al mapear Firestore, especialmente en el ensamblador de calendario que combina las tres entidades.` },
+
+    { section: "Sincronización, multi-dispositivo y sesiones huérfanas",
+      q: `Si el usuario intenta iniciar un bloque en un dispositivo mientras ya hay uno activo en otro, ¿qué debe pasar: se bloquea con un mensaje, se ofrece "tomar el control" (matando la sesión del otro dispositivo), o se muestra solo un aviso? Y si la sesión activa queda huérfana (crash, cierre sin cerrar sesión), ¿cómo recupera el usuario la capacidad de iniciar un bloque nuevo en cualquier dispositivo?`,
+      ctx: `SPEC §31.3 y ARCHITECTURE.md §26 solo entregan una "regla recomendada" de una sola sesión activa por usuario, sin definir el flujo de UX.`,
+      why: `sin este flujo, un usuario puede quedar bloqueado sin poder iniciar ningún bloque en ningún dispositivo porque el sistema cree que hay una sesión activa fantasma, rompiendo el principio de que iniciar un bloque debe tomar pocos toques.` },
+    { section: "Sincronización, multi-dispositivo y sesiones huérfanas",
+      q: `¿Qué fuente gana cuando hay discrepancia entre el AsyncStorage local y la referencia activa en Firestore (reinstalación, cambio de celular, reloj del dispositivo desincronizado, caché borrada)?`,
+      ctx: `SPEC §31.3 dice que el estado local es "fuente de verdad mientras está en curso" y menciona que debe existir "resolución clara de conflictos simple" (§31.2), pero no la especifica.`,
+      why: `es exactamente el tipo de ambigüedad que en la práctica produce sesiones fantasma, banco de descanso duplicado o pérdida silenciosa de datos de estudio.` },
+    { section: "Sincronización, multi-dispositivo y sesiones huérfanas",
+      q: `Si el usuario cierra o mata la app estando en <code>study_completed_waiting_response</code> o <code>break_completed_waiting_response</code> y no vuelve a abrirla en días, ¿qué pasa con esa sesión "zombie" que Firestore sigue marcando como activa, y puede iniciar una sesión nueva mientras tanto?`,
+      ctx: `El stack decide no usar Cloud Functions en V1, por lo que nadie evalúa la expiración de 30 segundos / 10 minutos hasta que la app se reabra.`,
+      why: `sin un proceso server-side que cierre sesiones vencidas, la regla de "una sola sesión activa" puede bloquear indefinidamente a un usuario que simplemente cerró la app en mal momento.` },
+
+    { section: "Confiabilidad técnica de la implementación",
+      q: `¿Se decidió explícitamente seguir con Expo Go para todo el desarrollo, o se contempla migrar a un Development Build / EAS Build antes de construir el núcleo del cronómetro (Fase 4)?`,
+      ctx: `El plan indica probar todo con Expo Go desde el día 1, pero SPEC.md exige alarmas precisas con ventana de respuesta obligatoria de 30 segundos, sonido de fin de bloque y selección de audio propio (Document Picker), y Expo Go tiene soporte limitado para notificaciones locales confiables en segundo plano, además de que Android limita temporizadores JS en background.`,
+      why: `si el cronómetro no puede sonar/notificar de forma confiable en segundo plano bajo Expo Go, el núcleo diferenciador del producto puede no funcionar en producción, y descubrirlo recién en la Fase 4 obligaría a rehacer el setup del proyecto a mitad de camino.` },
+    { section: "Confiabilidad técnica de la implementación",
+      q: `¿Se acepta que el audio personalizado elegido con Document Picker sea local a cada dispositivo (no sincronizado), o se espera que el mismo sonido suene también en la versión web?`,
+      ctx: `El stack técnico no incluye Firebase Storage ni ningún mecanismo para subir ese archivo a la nube, pero el producto promete sincronización por cuenta entre Android y web.`,
+      why: `tal como está definida la arquitectura, no hay forma técnica de que el mismo audio aparezca en otro dispositivo, lo cual contradice la promesa de "cuenta interconectada" si no se acepta como limitación desde ahora.` },
+
+    { section: "Autenticación",
+      q: `¿Se debe documentar formalmente en SPEC.md la aceptación del límite de ~100 usuarios sin verificar de Google Sign-In?`,
+      ctx: `El prompt original acepta explícitamente esta limitación por tratarse de uso personal, pero no aparece registrada en ningún documento técnico.`,
+      why: `sin este registro, un futuro agente o el propio dueño de producto podría interpretar el límite como un bug a resolver e iniciar un proceso de verificación de app con Google que ya se descartó como innecesario.` },
+
+    { section: "Proceso y alcance de la fase de mockup",
+      q: `¿Qué debe producir exactamente la fase de mockup (pantallas estáticas, prototipo clicable, diseño en Figma, HTML/código), en qué herramienta, y qué se considera "aprobado" antes de pasar a la Fase 1/2 de IMPLEMENTATION_PLAN.md?`,
+      ctx: `Ninguno de los tres documentos técnicos contempla esta fase — fueron escritos para ir directo a código de producción en Expo/Firebase — y tampoco existen referencias visuales concretas más allá de las descripciones de texto del SPEC.`,
+      why: `sin definir formato y criterio de salida, el trabajo puede partir en la dirección equivocada o duplicarse construyendo la UI del timer dos veces: una en mockup y otra real.` },
+    { section: "Proceso y alcance de la fase de mockup",
+      q: `¿El mockup debe respetar ya los nombres y estados definidos en ARCHITECTURE.md (Category, Preset, StudySession, los 10 estados de la máquina del cronómetro), o es una exploración visual libre y desconectada de ese documento?`,
+      why: `si el mockup ignora esa estructura puede omitir estados críticos — ventana de 30 segundos, panel de selección de descanso, cancelación con doble confirmación, banco de descanso — que son el corazón funcional del producto, obligando a rediseñar pantallas completas al conectar el mockup con la arquitectura real.` },
+    { section: "Proceso y alcance de la fase de mockup",
+      q: `Ahora que Claude Code es el orquestador real, ¿el flujo ChatGPT (planificación) + Gemini Code Assist (implementación) que estructura IMPLEMENTATION_PLAN.md queda completamente reemplazado, o se sigue usando en paralelo para algo?`,
+      why: `si el flujo cambia por completo, buena parte de las secciones del plan sobre roles y prompts para Gemini quedan obsoletas y deberían reescribirse o descartarse antes de avanzar, para no seguir un manual operativo que ya no corresponde.` },
+    { section: "Proceso y alcance de la fase de mockup",
+      q: `¿En qué orden se deben mockear las 4 secciones del producto (Calendario, Estadísticas, Cronómetro, Configuración)?`,
+      why: `el cronómetro es "el corazón del producto" y el de más estados de interacción; mockearlo primero valida los flujos más riesgosos antes de invertir tiempo en pantallas que dependen de sus datos, pero si hay otra prioridad de negocio conviene saberlo ahora y no reordenar el trabajo a mitad de camino.` },
+    { section: "Proceso y alcance de la fase de mockup",
+      q: `¿SPEC.md, ARCHITECTURE.md e IMPLEMENTATION_PLAN.md deben tratarse como definitivos para el mockup, o hay partes que se quieren reabrir o ajustar antes de avanzar al diseño visual?`,
+      why: `los documentos contienen secciones que ya no reflejan el flujo real de trabajo con Claude Code; si se tratan como intocables, el mockup se construye sobre una base parcialmente desactualizada.` }
+  ];
+
+  var STORAGE_KEY = "productvt-beta-decisiones-v1";
+
+  var list = document.getElementById("list");
+  var copyBtn = document.getElementById("copyBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var progressLabel = document.getElementById("progressLabel");
+  var progressFill = document.getElementById("progressFill");
+  var saveStatus = document.getElementById("saveStatus");
+
+  function loadAnswers(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function saveAnswers(answers){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(answers)); }catch(e){}
+  }
+
+  var answers = loadAnswers();
+  var saveTimer = null;
+
+  function autoResize(el){
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+
+  function updateProgress(){
+    var total = QUESTIONS.length;
+    var done = 0;
+    for(var i=0;i<total;i++){
+      if((answers[i] || "").trim().length > 0) done++;
+    }
+    progressLabel.textContent = done + " / " + total;
+    progressFill.style.width = (total ? (done/total*100) : 0) + "%";
+  }
+
+  function flashSaved(){
+    saveStatus.textContent = "Guardado";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ saveStatus.textContent = " "; }, 1200);
+  }
+
+  function stripTags(html){
+    return html.replace(/<[^>]+>/g, "");
+  }
+
+  var currentSection = null;
+  QUESTIONS.forEach(function(item, i){
+    if(item.section !== currentSection){
+      currentSection = item.section;
+      var h = document.createElement("div");
+      h.className = "section-heading";
+      h.textContent = currentSection;
+      list.appendChild(h);
+    }
+
+    var row = document.createElement("div");
+    row.className = "item";
+    row.id = "item-" + i;
+
+    var num = document.createElement("div");
+    num.className = "num";
+    num.textContent = String(i+1).padStart(2,"0");
+
+    var wrap = document.createElement("div");
+    wrap.className = "answer-wrap";
+
+    var q = document.createElement("p");
+    q.className = "q";
+    q.id = "label-" + i;
+    q.innerHTML = item.q;
+    wrap.appendChild(q);
+
+    if(item.ctx){
+      var ctx = document.createElement("p");
+      ctx.className = "ctx";
+      ctx.innerHTML = item.ctx;
+      wrap.appendChild(ctx);
+    }
+
+    var why = document.createElement("p");
+    why.className = "why";
+    why.innerHTML = '<span class="tag">Por qué importa:</span> ' + item.why;
+    wrap.appendChild(why);
+
+    var ta = document.createElement("textarea");
+    ta.setAttribute("aria-labelledby", "label-" + i);
+    ta.placeholder = "Escribe tu respuesta aquí…";
+    ta.rows = 1;
+    ta.value = answers[i] || "";
+
+    ta.addEventListener("input", function(){
+      answers[i] = ta.value;
+      autoResize(ta);
+      row.classList.toggle("answered", ta.value.trim().length > 0);
+      updateProgress();
+      saveAnswers(answers);
+      flashSaved();
+    });
+
+    wrap.appendChild(ta);
+    row.appendChild(num);
+    row.appendChild(wrap);
+    list.appendChild(row);
+
+    if((answers[i] || "").trim().length > 0) row.classList.add("answered");
+    requestAnimationFrame(function(){ autoResize(ta); });
+  });
+
+  updateProgress();
+
+  function buildExport(){
+    var lines = [];
+    var section = null;
+    QUESTIONS.forEach(function(item, i){
+      if(item.section !== section){
+        section = item.section;
+        lines.push("— " + section + " —", "");
+      }
+      lines.push((i+1) + ". " + stripTags(item.q));
+      var a = (answers[i] || "").trim();
+      lines.push(a.length ? a : "(sin responder)");
+      lines.push("");
+    });
+    return lines.join("\n").trim() + "\n";
+  }
+
+  copyBtn.addEventListener("click", function(){
+    var text = buildExport();
+    var done = function(){
+      var original = "Copiar respuestas";
+      copyBtn.textContent = "Copiado";
+      setTimeout(function(){ copyBtn.textContent = original; }, 1600);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, done);
+    }else{
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand("copy"); }catch(e){}
+      document.body.removeChild(ta);
+      done();
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    if(!confirm("¿Borrar todas las respuestas guardadas en este navegador?")) return;
+    answers = {};
+    saveAnswers(answers);
+    document.querySelectorAll("#list textarea").forEach(function(ta){
+      ta.value = "";
+      autoResize(ta);
+      ta.closest(".item").classList.remove("answered");
+    });
+    updateProgress();
+  });
+})();
+</script>
