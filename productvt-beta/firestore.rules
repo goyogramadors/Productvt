@@ -1,0 +1,177 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function hasUserId(uid) {
+      return incoming().userId == uid;
+    }
+    function versionOk() {
+      return !('schemaVersion' in incoming())
+        || (incoming().schemaVersion is int && incoming().schemaVersion >= 1);
+    }
+    function changedKeys() {
+      return incoming().diff(existing()).affectedKeys();
+    }
+
+    // Todo lo que no cuelgue de users/{uid} está cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /profile/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && docId == 'main'
+          && incoming().id == uid && versionOk();
+        allow delete: if false;
+      }
+
+      match /settings/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && docId == 'main'
+          && hasUserId(uid) && versionOk();
+        allow delete: if false;
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == categoryId
+          && incoming().type in ['study', 'inverse', 'invisible']
+          && incoming().name is string
+          && incoming().color is string
+          && incoming().isArchived is bool;
+        // El cliente archiva en vez de borrar cuando hay referencias (I-14).
+        allow delete: if isOwner(uid);
+      }
+
+      match /presets/{presetId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == presetId
+          && incoming().studyDurationMinutes is number && incoming().studyDurationMinutes > 0
+          && incoming().shortBreakMinutes is number && incoming().shortBreakMinutes >= 0
+          && incoming().longBreakMinutes is number && incoming().longBreakMinutes >= 0
+          && incoming().cyclesBeforeLongBreak is int && incoming().cyclesBeforeLongBreak >= 1
+          && incoming().isDefault is bool;
+        allow delete: if isOwner(uid);
+      }
+
+      // Histórico cerrado: nunca status 'active' (I-13).
+      match /sessions/{sessionId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == sessionId
+          && incoming().type in ['study', 'inverse']
+          && incoming().status in ['completed', 'cancelled', 'expired', 'interrupted']
+          && incoming().startedAt is string
+          && incoming().endedAt is string;
+        allow delete: if isOwner(uid);
+      }
+
+      match /events/{eventId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == eventId
+          && incoming().type == 'invisible'
+          && incoming().startAt is string
+          && incoming().endAt is string
+          && incoming().isDeleted is bool;
+        allow delete: if isOwner(uid);
+      }
+
+      match /goals/{goalId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == goalId
+          && incoming().weekKey is string
+          && incoming().categoryId is string
+          && incoming().targetSeconds is number && incoming().targetSeconds > 0
+          && incoming().achievedSeconds is number && incoming().achievedSeconds >= 0
+          && incoming().status in ['pending', 'completed', 'failed'];
+        allow delete: if isOwner(uid);
+      }
+
+      // ---------- singleton de sesión activa (dominante / espectador) ----------
+      match /active/{docId} {
+        function validCheckpoint() {
+          // Todo checkpoint lleva FieldValue.serverTimestamp(): en reglas equivale a request.time.
+          return incoming().lastCheckpointAt == request.time;
+        }
+        function dominantUnchanged() {
+          return incoming().dominantDeviceId == existing().dominantDeviceId;
+        }
+        function onlyControlRequestChanged() {
+          return changedKeys().hasOnly(['controlRequest', 'updatedAt']);
+        }
+        function requestFromAndroid() {
+          // V1: solo Android puede pedir el control (brief §6). Quitar esta función habilita "web dominante".
+          return !('controlRequest' in incoming())
+            || incoming().controlRequest.requesterPlatform == 'android';
+        }
+        function validTakeover() {
+          return ('controlRequest' in existing())
+            && incoming().dominantDeviceId == existing().controlRequest.requesterDeviceId
+            && !('controlRequest' in incoming());
+        }
+
+        allow read: if isOwner(uid);
+
+        // Crear: solo si no existe (Firestore rechaza create sobre un doc existente) y desde Android.
+        allow create: if isOwner(uid) && docId == 'session' && hasUserId(uid) && versionOk()
+          && incoming().type in ['study', 'inverse']
+          && incoming().sessionId is string
+          && incoming().dominantDeviceId is string
+          && incoming().deviceInfo.platform == 'android'
+          && validCheckpoint();
+
+        // Actualizar: (a) el dominante hace checkpoint sin cambiar dominantDeviceId,
+        //             (b) alguien toca SOLO controlRequest (solicitud o rechazo),
+        //             (c) toma de control válida: el nuevo dominante es el solicitante y la solicitud se borra.
+        allow update: if isOwner(uid) && docId == 'session' && hasUserId(uid) && versionOk()
+          && incoming().sessionId == existing().sessionId
+          && incoming().type == existing().type
+          && (
+               (dominantUnchanged() && validCheckpoint())
+            || (dominantUnchanged() && onlyControlRequestChanged() && requestFromAndroid())
+            || (validTakeover() && validCheckpoint())
+          );
+
+        // Borrar: cierre normal por el dominante o cierre de zombie por cualquier dispositivo del dueño (I-20).
+        allow delete: if isOwner(uid) && docId == 'session';
+      }
+
+      // ---------- galaxia e inventario (previstos, sin UI en V1) ----------
+      match /layouts/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && docId == 'galaxy' && hasUserId(uid) && versionOk();
+        allow delete: if isOwner(uid);
+      }
+
+      match /inventory/{itemId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && hasUserId(uid) && versionOk()
+          && incoming().id == itemId
+          && incoming().kind in ['planet_skin', 'background', 'collection']
+          && incoming().source in ['default', 'streak', 'achievement'];
+        allow delete: if isOwner(uid);
+      }
+    }
+  }
+}

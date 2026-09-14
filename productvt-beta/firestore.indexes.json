@@ -1,0 +1,17 @@
+{
+  "indexes": [
+    { "collectionGroup": "sessions", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "type", "order": "ASCENDING" }, { "fieldPath": "startedAt", "order": "ASCENDING" } ] },
+    { "collectionGroup": "sessions", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "type", "order": "ASCENDING" }, { "fieldPath": "startedAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "sessions", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "type", "order": "ASCENDING" }, { "fieldPath": "categoryId", "order": "ASCENDING" }, { "fieldPath": "startedAt", "order": "ASCENDING" } ] },
+    { "collectionGroup": "events", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "startAt", "order": "ASCENDING" } ] },
+    { "collectionGroup": "events", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "isDeleted", "order": "ASCENDING" }, { "fieldPath": "recurrence.frequency", "order": "ASCENDING" } ] },
+    { "collectionGroup": "categories", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "type", "order": "ASCENDING" }, { "fieldPath": "isArchived", "order": "ASCENDING" }, { "fieldPath": "name", "order": "ASCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}
