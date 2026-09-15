@@ -838,3 +838,19 @@ Ninguno de estos bloquea la implementación: cada uno tiene un default razonable
 | §6 — Matriz de pruebas | 25 casos (Q1-Q25) + Q26 adicional sobre capas, estadísticas y metas | CODE (Vitest/Jest), todas las secciones anteriores |
 
 Recordatorio de alcance (ver Propósito): la Galaxia de metas y la Tienda no se tratan en este documento — viven completas en `10-GALAXIA-Y-TIENDA.md` (V1.1). Este documento solo garantiza que sus ganchos de datos (`WeeklyGoal.parentGoalId?`, `.skinId?`) no interfieren con ningún algoritmo de Calendario/Estadísticas/Metas de V1 (verificado explícitamente en §3.4/§3.5).
+
+
+## Enmienda v3 (2026-09-14) — feedback del creador tras revisar los mockups interactivos
+
+Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09-14)** (con prioridad sobre este documento hasta que esta enmienda se incorpore orgánicamente a las secciones correspondientes). Esta sección NO reescribe el cuerpo del documento: agrega las reglas nuevas que lo afectan y señala las que lo corrigen.
+
+### Reglas de UI y configuración que entran por esta enmienda (v3 §B, §F)
+
+1. **Aprobado sin cambios**: la visualización de calendario para desktop. Preocupación abierta del creador: **responsive en celular** — resolver el layout móvil del calendario antes de la fase móvil de UI (v3 §B1).
+2. **Dismiss del popup de crear evento**: presionar **fuera** del panel lo cierra por defecto (v3 §B2).
+3. **Mover eventos**: presionar y arrastrar un evento lo mueve (v3 §B3).
+4. **Día actual destacado** en el panel (v3 §B4).
+5. **Barra de continuidad (línea de "ahora")**: indicador que sigue la hora en curso en las **vistas de 3 días y 1 día** (v3 §B5).
+6. **Jerarquía en Configuración** (v3 §F1): pantalla con la jerarquía completa de supermetas y metas, **editable** y con **eliminación**.
+7. **HUD de la galaxia decorativo** (v3 §F2): Ajustes y amigos sin funcionalidad real por ahora.
+8. **Impacto en rollup de estadísticas** (§3.5 de este documento): metas/supermetas ya no tienen `categoryId` (v3 §A2) — el rollup por categoría debe rediseñarse hacia **meta/supermeta/calendario**; el exceso de bloques (v3 §C4) aparece como métrica de estadísticas. Pendiente de redacción fina en la propagación orgánica de este documento.

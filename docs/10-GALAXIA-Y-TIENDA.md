@@ -527,3 +527,21 @@ Todo lo que sigue es diseño propio de este documento (no hay respuesta literal 
 | Supuestos pendientes de confirmar | 9 supuestos, todos con default ya aplicado | Este documento |
 
 Trazabilidad transversal: todo el documento se apoya en que `01-SPEC.md` y `02-DOMINIO.md` ya fijaron el alcance por versión y el esquema base (`WeeklyGoal.parentGoalId?/skinId?`, `GalaxyLayout`, `InventoryItem`) — sin eso, ninguna sección de este documento habría podido evitar redefinir el modelo de datos.
+
+
+## Enmienda v3 (2026-09-14) — feedback del creador tras revisar los mockups interactivos
+
+Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09-14)** (con prioridad sobre este documento hasta que esta enmienda se incorpore orgánicamente a las secciones correspondientes). Esta sección NO reescribe el cuerpo del documento: agrega las reglas nuevas que lo afectan y señala las que lo corrigen.
+
+### Comportamiento de la galaxia confirmado por el creador (v3 §E)
+
+1. **Alcance exclusivo**: la galaxia representa **solo supermetas y metas** — cada supermeta es un **planeta**, sus metas son **mini-planetas** conectados como subramas (v3 §E1).
+2. **Interacción tipo Obsidian Graph View**: gravedad y vínculos con la misma sensación interactiva (v3 §E2).
+3. **Proporción considerable supermeta:meta** — desde la vista general las metas se ven **apenas, como estrellas** (v3 §E3).
+4. **Orden circular por defecto**: orden de **creación, sentido horario**; es el orden que restaura el botón **"Restablecer"** (v3 §E4).
+5. **Arrastre**: la supermeta arrastrada cambia su posición relativa; mientras se arrastra puede tomar posiciones anómalas, pero **al soltar se acomoda automáticamente** en la posición coordinada con más sentido y **empuja a las demás** (v3 §E5).
+6. **Vista de foco**: clic en una supermeta → **pantalla completa** sin las demás supermetas; el planeta ocupa **la mitad de la pantalla** y sus metas se ven con mayor resolución y tamaño orbitando el planeta central (v3 §E6).
+7. **Persistencia de posiciones** en ambas vistas, salvo reseteo explícito de la vista (v3 §E7).
+8. **Antimetas ocultas por defecto**; un botón las hace aparecer **bien pequeñas** (v3 §E8).
+9. **Botón "crear"** = hotkey, sin cambios (v3 §E9).
+10. **HUD decorativo**: Ajustes y amigos sin funcionalidad por ahora (v3 §F2). La Tienda no cambia en esta enmienda.

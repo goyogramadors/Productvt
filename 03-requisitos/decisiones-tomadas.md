@@ -128,3 +128,94 @@ Hallazgos de severidad media/baja de revision-spec-beta.md que ya tienen resoluc
 ## Coordinación entre sesiones
 
 Existe otra sesión de Claude Code (mockups/UX en 00-vision, 01-mockups; era "productvt-cb", **renombrada a "productvt-9b" el 2026-09-06 tras un reset de cuota**) trabajando en paralelo sobre la misma carpeta de organización pero **sin acceso directo a productvt-beta/**. La sesión BC Orquestador Productvt es la que construye el prototipo funcional real en `productvt-beta/`, siguiendo `docs/`. La sesión que mantenía este archivo era "productvt-eb", **renombrada a "productvt-7b"** el mismo día. Para evitar trabajo duplicado o contradictorio, la construcción de código de producción queda en una sola sesión a la vez. Nota: los nombres de sesión pueden volver a cambiar en futuros resets de cuota — usar `ListAgents` para confirmar el nombre vigente antes de enviar un mensaje de coordinación.
+
+## v3 (2026-09-14) — Feedback del creador tras revisar los mockups interactivos
+
+Fuente: revisión en vivo de Gregorio sobre la preview interactiva (`01-mockups/preview-app.html`, servida con tab bar sobre los mockups de `01-mockups/mobile/`). Mismo estatus que v2: **enmiendas con prioridad sobre todo el canon** hasta que se propaguen a `docs/` (instrucción literal del creador: "guarda todo lo que dije dentro de las especificaciones" — esta sección es esa captura íntegra; la propagación documento por documento queda pendiente, ver G). Se organizó en A–F por tema; nada se parafraseó en contra del texto original.
+
+### A. Dominio y nomenclatura (estandarización)
+
+A1. **Jerarquía canónica**: existen **Calendarios**, **Supermetas**, **Metas**, **Tareas** y **Eventos**. Los calendarios se ven como capas en la UI pero **se llaman calendarios** — no introducir "capa" como entidad de dominio separada.
+
+A2. **Metas y supermetas NO se asocian a categorías**: se asocian a un calendario (capa de calendario).
+
+A3. **Una meta puede estar asociada a más de una supermeta.**
+
+A4. **Cada supermeta puede estar asociada a tareas y eventos.**
+
+A5. **Eventos**: algo que ocurre **una sola vez**; puede ser atemporal o con fecha/hora definida; **no es recurrente**.
+
+A6. **Tareas**: son **recurrentes**; se pueden definir atemporales o temporalmente en ciertos días y horarios con **repetición personalizada, igual que Google Calendar**. Cuando se define atemporalmente se le puede setear un **tiempo objetivo total** — insumo relevante para el funcionamiento de los bloques.
+
+A7. **Antimeta**: al crear una supermeta existe por defecto un botón **"Antimeta"**. Al seleccionarla, no da puntaje ni nada de sus metas internas; constituye una "meta" que **solo tiene eventos atemporales** — es decir, existe como una **categoría invisible** que se puede seleccionar desde el **cronómetro inverso** para que el tiempo quede registrado.
+
+A8. El **sistema de creación de tareas del mockup está defectuoso** y hay que corregirlo. La **nomenclatura general** se repasará con el creador en una pasada aparte para dejarla estandarizada (pendiente, ver G).
+
+### B. Calendario (UI)
+
+B1. La **visualización del calendario para computador está perfecta** (aprobada tal cual). Preocupación explícita del creador: **cómo se ajusta en celular** — resolver el responsive móvil.
+
+B2. **Presionar fuera del popup/panel de crear evento debe cerrarlo por defecto** (comportamiento estándar de dismiss).
+
+B3. **Presionar y arrastrar un evento debe poder moverlo** (drag & drop dentro del panel).
+
+B4. **El día actual debe estar destacado en el panel.**
+
+B5. Falta la **barra de continuidad** (indicador de "ahora") que mantenga el **seguimiento de la hora en la que se está** en las **vistas de 3 días y de 1 día**.
+
+### C. Cronómetro — flujo de inicio por pasos y vínculo con metas
+
+C1. Hoy el cronómetro **no está interconectado** con la creación de metas y tareas de las metas; pasa lo mismo con el mapa galaxia de la pantalla de inicio. Hay que conectarlos.
+
+C2. **El inicio de una sesión se desglosa por pasos**:
+   1. Primero se pregunta **si quieres usar un preset**. Si aprietas "sí", se abre una **lista de los presets creados** (teniendo **por defecto el Pomodoro clásico**); abajo un **"+"** que al apretarlo **desglosa el resto del panel** con las definiciones de bloque.
+   2. **Ya no se pregunta por categoría arriba.** En su lugar: **listas desglosadas automáticas por supermeta** → al seleccionar la supermeta se muestran **sus metas** → se elige la meta → se pregunta **tarea o evento** → se muestran las opciones.
+
+C3. **Todo bloque de estudio califica como evento o como tarea** — se elige al principio y cambian las opciones:
+   - **Si es evento**: pregunta si es un **evento aparte** o si está **asociado a una meta en particular**. En caso de estar asociado, pregunta **respecto a qué evento de esa supermeta califica** y el usuario lo selecciona — el sentido es decir *"estoy cumpliendo este evento que estaba definido en mi meta y en mi calendario"*.
+   - **Si es tarea**: permite seleccionar **respecto a qué tarea de qué meta** (obviamente preguntando primero la supermeta y desglosando desde esto) **atemporal** estás usando; **el tiempo se registra a esa tarea atemporal de esa meta en particular de forma exacta**.
+
+C4. **Exceso sobre el objetivo**: si se supera el objetivo, **no se corta abruptamente el bloque** — simplemente queda un **exceso** que se refleja en las **estadísticas**; el **puntaje de ganancia se obtiene simplemente al llegar al tiempo necesario** (el exceso no lo escala).
+
+C5. **El cronómetro inverso está bien** (aprobado). Único ajuste: la **antimeta** (A7) queda **seleccionable desde el cronómetro inverso** como categoría invisible.
+
+### D. Bloques de cronómetro ↔ calendario
+
+D1. **TODO bloque de cronómetro, al ser finalizado, se crea como cuadro en el calendario**, asociado al **calendario que se tenga vinculado**.
+
+D2. **Por defecto**, si la supermeta —sea normal o antimeta— **no está asociada a ningún calendario**, se **crea uno propio con su mismo nombre**. En caso de estar linkeada, el cuadro se crea **dentro de ese calendario**.
+
+D3. **Color**: el **color del calendario** es la máxima prioridad, **incluso superior al color de la supermeta**. Si el calendario se crea desde la supermeta por defecto, **ese sí nace con el color de la supermeta**, y el color afecta la **visualización dentro del propio calendario**.
+
+### E. Galaxia (página de inicio)
+
+E1. El **sistema de galaxias queda exclusivamente asociado a la creación de supermetas y metas**: cada supermeta es un **planeta** con sus **subramas conectadas** que son sus **metas** (mini-planetas).
+
+E2. El **sistema de gravedad y vínculos** debe ser **igual en términos interactivos al de Obsidian con su Graph View**.
+
+E3. La **proporción supermeta:meta en tamaño debe ser considerable**: desde la vista general las metas quedan **apenas visibles, casi como "estrellas"**.
+
+E4. **El sistema planetario se ordena circularmente**: por defecto, en **orden de creación en sentido horario** (ese es el orden que se toma al apretar **"restablecer"**).
+
+E5. **Arrastre de supermeta**: al arrastrar una supermeta se cambia su **posición relativa** respecto de las demás. Mientras se arrastra puede tomar **posiciones anómalas**, pero **al soltarla automáticamente queda en la nueva posición coordinada que tenga más sentido** y, al ser arrastrada, **empuja a las demás**.
+
+E6. **Clic en una supermeta → pantalla completa**: se pasa a una vista donde **no se alcanzan a ver el resto de supermetas**; el **planeta ocupa la mitad de la pantalla** y se ven **las metas de esta super con mayor resolución y tamaño, orbitando el planeta central**.
+
+E7. **Las posiciones en que quedan los planetas orbitando, en ambas vistas, quedan guardadas**, a menos que se apriete el **reseteo de la vista**.
+
+E8. **Por defecto las antimetas no se muestran**; hay un **botón que permite hacerlas aparecer, bien pequeño**.
+
+E9. El **botón "crear" está perfecto** — es solo un hotkey (sin cambios).
+
+### F. Configuración y HUD
+
+F1. Desde **Configuración** debe ser **visible la jerarquía de supermetas y metas**, que sea **editable** y permita **eliminar** también.
+
+F2. **Ajustes y amigos** (HUD de la galaxia): **por ahora son solo decoración** (sin funcionalidad real).
+
+### G. Pendientes de esta v3
+
+1. ~~Mensaje truncado~~ **Resuelto 2026-09-14**: el mensaje del creador estaba completo; la instrucción era respaldar toda la lógica dentro de los archivos de especificaciones para que quede claro ante cualquier chat/IA — hecho vía enmiendas v3 en `docs/01-SPEC.md`, `02-DOMINIO.md`, `03-CRONOMETRO.md`, `07-CALENDARIO-ESTADISTICAS-METAS.md` y `10-GALAXIA-Y-TIENDA.md`.
+2. ~~Pase de nomenclatura~~ **Resuelto 2026-09-14**: el creador confirmó que la nomenclatura ya fue entregada — es la definida en A1–A6 (cómo se llaman las funcionalidades: eventos, tareas, metas, supermetas, bloques, calendarios). Se adopta como estándar; corregir usos desviados donde aparezcan.
+3. **Propagación a `docs/`**: esta v3 todavía no está absorbida por `01-SPEC.md`, `02-DOMINIO.md`, `03-CRONOMETRO.md`, `07-CALENDARIO-ESTADISTICAS-METAS.md` ni `10-GALAXIA-Y-TIENDA.md` — hacerla siguiendo el proceso del canal (registrar aquí primero, propagar después). Impacto esperado: nuevas entidades (Tarea/Evento/Antimeta), reemplazo de "categoría" por supermeta/meta en el flujo del cronómetro, bloques→calendario, galaxia tipo graph view.
+4. **Mockups a rehagar**: calendario (B2–B5 + responsive B1), formulario del cronómetro (C2–C3), galaxia (E2–E8), creación de tareas (A8) y panel de jerarquía en configuración (F1). El cronómetro inverso (C5) y la visualización desktop del calendario (B1) quedan aprobados.

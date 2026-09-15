@@ -744,3 +744,20 @@ Solo los supuestos de `_brief-orquestador.md` §10 que afectan a la **máquina d
 | §13 — Matriz de pruebas del dominio | 42 casos (P1–P42) sobre las 8 categorías de reglas de este documento | CODE (Vitest/Jest, brief §7), todas las secciones anteriores |
 | §14 — Resolución de hallazgos de la revisión externa | Tabla hallazgo → resolución → ubicación, para los de FSM/reglas de negocio no resueltos en `02-DOMINIO.md` | REV-ALTA-1, REV-ALTA-4, REV-MEDIA-5, REV-MEDIA-9, REV-MEDIA-10, REV-MEDIA-17, REV-MEDIA-18, REV-MEDIA-19 |
 | Supuestos pendientes de confirmar | Umbral de 30 min, disponibilidad de almuerzo, tope del inverso, exclusión mutua inverso/estudio | B §10.1, B §10.2, B §10.3, B §10.4 |
+
+
+## Enmienda v3 (2026-09-14) — feedback del creador tras revisar los mockups interactivos
+
+Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09-14)** (con prioridad sobre este documento hasta que esta enmienda se incorpore orgánicamente a las secciones correspondientes). Esta sección NO reescribe el cuerpo del documento: agrega las reglas nuevas que lo afectan y señala las que lo corrigen.
+
+### Flujo de inicio por pasos y vínculo con metas (v3 §C)
+
+1. **Formulario de sesión por pasos desglosados** (reemplaza el paso de "categoría" del diseño actual):
+   1. **Preset**: pregunta si se usa preset; "sí" abre la lista de presets creados (**"Pomodoro clásico" por    defecto**); un botón **"+"** desglosa el resto del panel con las definiciones de bloque.
+   2. **Supermeta**: lista desglosada automática de supermetas.
+   3. **Meta**: al elegir supermeta se muestran sus metas.
+   4. **Tarea o evento**: se pregunta cómo califica el bloque y se muestran las opciones correspondientes.
+2. **Calificación del bloque** (v3 §C3): **evento** → evento aparte o asociado a una meta (seleccionando a qué evento de esa supermeta califica: "estoy cumpliendo este evento definido en mi meta y en mi calendario"); **tarea** → qué tarea **atemporal** de qué meta se está trabajando; el tiempo se registra de forma exacta a esa tarea.
+3. **Exceso** (v3 §C4): al superar el objetivo el bloque **no se corta**; queda exceso en estadísticas; el puntaje se obtiene al llegar al tiempo necesario.
+4. **Bloque finalizado → cuadro en calendario** (v3 §D1–D3): creación automática del cuadro con las reglas de calendario implícito y precedencia de color de la enmienda v3 de `02-DOMINIO.md` (puntos 2 y 7).
+5. **Cronómetro inverso** (v3 §C5): sin cambios de máquina; la **antimeta** queda disponible como categoría invisible.

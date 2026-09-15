@@ -515,3 +515,17 @@ Numerados según `_brief-orquestador.md` §10. Cada uno trae el default ya aplic
 | §10 — Definición de éxito | Métricas funcionales y de producto verificables, sin telemetría de terceros | hallazgo BAJO §47 SPEC v1, no-objetivo §3.8 |
 | §11 — Resolución de la revisión externa | Tabla hallazgo → resolución → ubicación, solo hallazgos de producto | REV-ALTA-1/3/4, REV-MEDIA-1/5/6/8/9/12/14/16/17/18/19/20, hallazgos BAJA listados |
 | Supuestos pendientes de confirmar | Web dominante, umbral 30 min, tope inverso, almuerzo, exclusión mutua, PWA, galaxia, idioma, vocabulario, fricción de cancelación (UX, no negocio) | B §10 (puntos 1-8, 10-11) |
+
+
+## Enmienda v3 (2026-09-14) — feedback del creador tras revisar los mockups interactivos
+
+Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09-14)** (con prioridad sobre este documento hasta que esta enmienda se incorpore orgánicamente a las secciones correspondientes). Esta sección NO reescribe el cuerpo del documento: agrega las reglas nuevas que lo afectan y señala las que lo corrigen.
+
+### Reglas de producto que entran por esta enmienda
+
+1. **Nomenclatura estándar del producto** (v3 §A): los nombres canónicos de las funcionalidades son **Calendario** (entidad de capa visual; no usar "capa" como nombre de entidad), **Supermeta**, **Meta**, **Tarea**, **Evento** y **Bloque** (tramo de cronómetro). Toda UI, doc y código debe usar exactamente estos nombres.
+2. **Jerarquía de dominio corregida** (v3 §A1–A4): metas y supermetas **no se asocian a categorías** — se asocian a un **calendario**. Una meta puede pertenecer a **más de una supermeta**. Cada supermeta puede tener **tareas y eventos**.
+3. **Antimeta** (v3 §A7): al crear una supermeta existe por defecto el botón "Antimeta"; una antimeta no da puntaje, solo tiene eventos atemporales y funciona como categoría invisible seleccionable desde el cronómetro inverso.
+4. **Cronómetro conectado al resto del producto** (v3 §C): el inicio de sesión de estudio se desglosa por pasos (preset → supermeta → meta → tarea/evento) y el tiempo registrado alimenta las estadísticas de cumplimiento de metas; lo mismo conecta a la galaxia de la pantalla de inicio.
+5. **Todo bloque finalizado se crea como cuadro en el calendario** vinculado a la supermeta (v3 §D).
+6. **HUD de la galaxia (Ajustes, amigos)**: por ahora solo decoración (v3 §F2).

@@ -309,6 +309,7 @@ Registro de cuándo cada documento de `docs/` quedó completo por primera vez y 
 | 2026-09-06 | `05-ARQUITECTURA.md`, `06-DISENO-UI.md`, `07-CALENDARIO-ESTADISTICAS-METAS.md`, `08-PLAN-IMPLEMENTACION.md`, `09-SETUP-Y-OPERACION.md`, `10-GALAXIA-Y-TIENDA.md` completos | — |
 | 2026-09-06 | Renombre de sesiones tras reset de cuota: `productvt-cb` → `productvt-9b`, `productvt-eb` → `productvt-7b` | `decisiones-tomadas.md` ("Coordinación entre sesiones") |
 | 2026-09-06 | Este documento (`00-INDICE.md`) se redacta completo, cerrando el conjunto de los 11 documentos del canon | Este documento |
+| 2026-09-14 | Feedback del creador tras revisar los mockups interactivos — registrado como **v3** en `decisiones-tomadas.md` (sección "v3 (2026-09-14)"): jerarquía Calendarios/Supermetas/Metas/Tareas/Eventos, metas ligadas a calendario y no a categorías, antimeta, flujo de cronómetro por pasos (preset → supermeta → meta → tarea/evento), todo bloque finalizado se crea como cuadro en el calendario, galaxia tipo Obsidian Graph View, jerarquía editable desde Configuración. Pendiente de propagación a `docs/` (ver §G de esa sección) | `decisiones-tomadas.md` (v3) |
 
 Regla de mantenimiento: cada vez que se agregue una fila a esta tabla por un cambio transversal nuevo, revisar si también corresponde actualizar §2 (mapa), §5 (supuestos) o §6 (trazabilidad) de este mismo índice — un evento que afecta a varios documentos casi siempre mueve algo en más de una de esas secciones.
 

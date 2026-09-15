@@ -1270,3 +1270,19 @@ Solo los supuestos de brief §10 que afectan al **modelo de datos** de este docu
 | §7 — Matriz de plataformas (datos) | Solo Android crea/escribe el singleton; web/desktop-PWA espectadoras y gestoras del resto | B §6, D "Alcance de plataformas", B §10.10 (pendiente) |
 | §8 — Resolución de la revisión externa | Tabla hallazgo → resolución → ubicación | REV-ALTA-2, REV-MEDIA-1, REV-MEDIA-2, REV-MEDIA-3, REV-MEDIA-4, REV-MEDIA-6, REV-MEDIA-7, REV-MEDIA-8, REV-MEDIA-13 |
 | Supuestos pendientes de confirmar | Rol dominante por plataforma, galaxia/Tienda (4 preguntas) | B §10.10, B §10.11 |
+
+
+## Enmienda v3 (2026-09-14) — feedback del creador tras revisar los mockups interactivos
+
+Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09-14)** (con prioridad sobre este documento hasta que esta enmienda se incorpore orgánicamente a las secciones correspondientes). Esta sección NO reescribe el cuerpo del documento: agrega las reglas nuevas que lo afectan y señala las que lo corrigen.
+
+### Cambios de modelo de datos que entran por esta enmienda
+
+1. **`CalendarLayer` pasa a llamarse Calendario** en dominio, UI y copys (v3 §A1): es la misma entidad de capa visual, pero su nombre de dominio/copy es "calendario"; el nombre as-built de código se corrige solo cuando se toque esa capa (regla de gobierno: el documento cita el nombre real del código, no al revés).
+2. **`SuperGoal` (Supermeta)**: campos nuevos `isAntiGoal: boolean` (default `false`) y `calendarId?` opcional. **Creación de calendario implícita** (v3 §D2): si la supermeta no tiene calendario asociado, se crea uno propio con **su mismo nombre**; si nace desde la supermeta, **hereda su color**. Si está linkeada, el cuadro va dentro del calendario linkeado y **manda el color del calendario** (v3 §D3).
+3. **`Goal` (Meta)**: `parentSuperGoalId` pasa a **`parentSuperGoalIds: string[]`** — una meta puede pertenecer a varias supermetas (v3 §A3). Metas y supermetas **dejan de referenciar `categoryId`**; referencian `calendarId` (v3 §A2).
+4. **`Task` (Tarea)**, entidad nueva, hija de supermeta (v3 §A6): **recurrente por naturaleza**; dos modos: **temporal** (días y horarios con **repetición personalizada**, semántica tipo Google Calendar) o **atemporal** con **`targetSeconds: number`** (tiempo objetivo total, insumo del cronómetro de estudio).
+5. **`Event` (Evento)**, entidad nueva, hija de supermeta (v3 §A5): ocurre **una sola vez**; modo **atemporal** o **definido** (fecha/hora); **nunca recurrente**.
+6. **Antimeta**: `SuperGoal` con `isAntiGoal: true`; **sin puntaje**, solo contiene **eventos atemporales**, funciona como **categoría invisible** seleccionable desde el cronómetro inverso (v3 §A7, §C5).
+7. **Bloque → calendario** (v3 §D1): todo bloque al completarse genera un **`CalendarItem` cuadro** en el calendario vinculado, con calificación (`eventId` o `taskId` de la meta elegida, v3 §C3) para el registro exacto del tiempo.
+8. **Exceso sobre objetivo** (v3 §C4): al superar el `targetSeconds` de una tarea el bloque **no se corta**; el exceso se registra en estadísticas y el **puntaje se otorga al llegar al objetivo** (no escala con el exceso).
