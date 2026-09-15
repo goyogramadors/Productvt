@@ -4,6 +4,8 @@ App de estudio (cronómetro de bloques + calendario + estadísticas) para celula
 
 **Repositorio**: https://github.com/goyogramadors/Productvt — migrado el 2026-09-14 desde el desarrollo local (`~/Desktop/Productvt`). `productvt-beta/` conserva su historial de commits original vía `git subtree` (ver el commit "fusionar historial completo de productvt-beta/").
 
+**Antes de trabajar en este repo, lee [`Iniciar Aquí.md`](./Iniciar%20Aquí.md)**: gobernanza básica, jerarquía de fuentes de verdad y mapa de navegación.
+
 ## Estructura de carpetas
 
 - **00-vision/** — Visión de producto, objetivos, alcance, público objetivo.
