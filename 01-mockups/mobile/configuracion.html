@@ -58,6 +58,11 @@
   }
   .mini-btn.danger{ color: var(--danger); border-color: var(--danger); }
   .mini-btn.xs{ padding: 3px 8px; font-size: 11px; }
+  /* v3.2 §J4: popups de edición (en vez de redirección hacia abajo dentro de la pestaña) */
+  .overlay{ position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.4); display: flex; align-items: flex-start; justify-content: center; padding: 7vh 12px 12px; overflow-y: auto; }
+  .popup-sheet{ background: var(--paper-raised); border: 1px solid var(--rule-strong); border-radius: 14px; width: 100%; max-width: 420px; padding: 14px 16px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .popup-head{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .popup-head h3{ margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; }
   .form{ display: flex; flex-direction: column; gap: 9px; border: 1px dashed var(--rule-strong); border-radius: 10px; padding: 11px; background: var(--paper); }
   .form input, .form select, .form textarea{
     background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong);
@@ -651,6 +656,38 @@
     sel.value = cur && valid.filter(function(s){ return s.id === cur; }).length ? cur : valid[0].id;
   }
 
+  // ---- v3.2 §J4: los formularios de supermeta y meta se abren como POPUP (§B2:
+  // presionar fuera cierra), no como redirección hacia abajo de la pestaña ----
+  var popupOverlay = null;
+  function openPopup(formEl, title){
+    closePopup();
+    popupOverlay = document.createElement("div");
+    popupOverlay.className = "overlay";
+    var box = document.createElement("div");
+    box.className = "popup-sheet";
+    var head = document.createElement("div");
+    head.className = "popup-head";
+    var h = document.createElement("h3");
+    h.textContent = title;
+    var x = document.createElement("button");
+    x.className = "mini-btn xs"; x.type = "button"; x.textContent = "✕";
+    x.addEventListener("click", closePopup);
+    head.appendChild(h); head.appendChild(x);
+    box.appendChild(head);
+    formEl.classList.remove("hidden");
+    box.appendChild(formEl);
+    popupOverlay.appendChild(box);
+    document.body.appendChild(popupOverlay);
+    popupOverlay.addEventListener("pointerdown", function(ev){ if(ev.target === popupOverlay) closePopup(); });
+  }
+  function closePopup(){
+    if(!popupOverlay) return;
+    var form = popupOverlay.querySelector(".form");
+    if(form) form.classList.add("hidden");
+    popupOverlay.remove();
+    popupOverlay = null;
+  }
+
   function openSuperForm(sg){
     sfState.editing = sg ? sg.id : null;
     sfState.color = sg ? sg.color : (CALENDARIOS[0] ? CALENDARIOS[0].color : PALETTE[0]);
@@ -662,10 +699,8 @@
       (sg && sg.deadline) ? toLocalInput(new Date(sg.deadline).getTime()) : "";
     document.getElementById("sfAnti").setAttribute("aria-pressed", sfState.anti ? "true" : "false");
     wirePalette(document.getElementById("sfPalette"), sfState, "color");
-    goalForm.classList.add("hidden");
-    superForm.classList.remove("hidden");
+    openPopup(superForm, sg ? "Editar supermeta" : "Nueva supermeta"); // v3.2 §J4: popup, no scroll
     document.getElementById("sfSave").textContent = sg ? "Guardar cambios" : "Crear y añadir su primera meta";
-    try{ superForm.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
   }
 // El color por defecto al asociar un calendario es el del calendario (v3.1 §J1)
   document.getElementById("sfCalendar").addEventListener("change", function(){
@@ -685,7 +720,7 @@
   });
   document.getElementById("sfCancel").addEventListener("click", function(){
     sfState.editing = null;
-    superForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
   });
   document.getElementById("sfSave").addEventListener("click", function(){
     var nameEl = document.getElementById("sfName");
@@ -706,7 +741,7 @@
         sg.anti = anti;
         if(anti) sg.goals = []; // la antimeta no da puntaje ni tiene metas internas (v3 §A7)
         saveSupermetas();
-        superForm.classList.add("hidden");
+        closePopup(); // v3.2 §J4
         sfState.editing = null;
         renderTree(); renderCalendars();
         saved();
@@ -724,7 +759,7 @@
     };
     SUPERMETAS.push(created);
     saveSupermetas();
-    superForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
     renderTree(); renderCalendars();
     saved();
     // v3.1 §J3: crear supermeta obliga a asociarle al menos una meta → altiro se abre su creación
@@ -750,14 +785,12 @@
     document.getElementById("gfTasks").value =
       g ? g.tareas.map(function(t){ return t.name; }).join("\n") : "";
     wirePalette(document.getElementById("gfPalette"), gfState, "color");
-    superForm.classList.add("hidden");
-    goalForm.classList.remove("hidden");
+    openPopup(goalForm, g ? "Editar meta" : "Nueva meta"); // v3.2 §J4: popup, no scroll
     document.getElementById("gfSave").textContent = g ? "Guardar cambios" : "Crear meta";
-    try{ goalForm.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
   }
 document.getElementById("gfCancel").addEventListener("click", function(){
     gfState.editing = null;
-    goalForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
   });
   document.getElementById("gfSave").addEventListener("click", function(){
     var nameEl = document.getElementById("gfName");
@@ -788,7 +821,7 @@ document.getElementById("gfCancel").addEventListener("click", function(){
         target.goals.push(found);
       }
       saveSupermetas();
-      goalForm.classList.add("hidden");
+      closePopup(); // v3.2 §J4
       gfState.editing = null;
       renderTree(); renderCalendars();
       saved();
@@ -801,7 +834,7 @@ document.getElementById("gfCancel").addEventListener("click", function(){
       eventos: []
     });
     saveSupermetas();
-    goalForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
     renderTree(); renderCalendars();
     saved();
   });
@@ -832,6 +865,14 @@ document.getElementById("gfCancel").addEventListener("click", function(){
   // ---- Arranque ----
   renderCalendars();
   renderTree();
+  // v3.2 §I8/J4: redirección desde la galaxia — ?super=<id> abre el popup de esa supermeta
+  try{
+    var qsSuper = new URLSearchParams(location.search).get("super");
+    if(qsSuper){
+      var targetSg = sgById(qsSuper);
+      if(targetSg) openSuperForm(targetSg);
+    }
+  }catch(e){}
 })();
 </script>
 </body>

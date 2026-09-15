@@ -463,7 +463,18 @@
     var amap = layoutAngles();
     planets.forEach(function(p){
       if(!showAnti && p.anti) return;
-      if(focusId && focusId !== p.id) return;
+      var el = stage.querySelector('[data-planet="'+p.id+'"]');
+      if(focusId && focusId !== p.id){
+        // v3.2 §E6: en foco la pantalla es COMPLETA — las demás supermetas y sus lunas
+        // quedan ocultas (antes se quedaban congeladas en su última posición y se veían).
+        if(el) el.style.display = "none";
+        p.metas.forEach(function(m){
+          var mo = stage.querySelector('[data-moon="'+m.id+'"]');
+          if(mo) mo.style.display = "none";
+        });
+        return;
+      }
+      if(el) el.style.display = "";
       if(p._x === undefined) return;
       if(draggingId !== p.id){
         p.ax += (p._x - p.ax) * 0.16;
@@ -486,11 +497,15 @@
           orbits[m.id] = ((orbits[m.id] === undefined ? moonAngle(p, m) : orbits[m.id]) + speed) % 360;
           target = orbits[m.id];
         } else {
-          // §I1 base hacia abajo y equidistante; §I5 deriva orbital leve alrededor de esa base
+          // §I1 base hacia abajo y equidistante; §I5 (v3.2) deriva orbital fluida:
+          // el sistema entero se balancea lentamente (coherente entre lunas) y cada
+          // luna "respira" con un desfase mínimo — nada de tirones ni fases opuestas.
           var base = orbits[m.id] === undefined ? moonAngle(p, m) : orbits[m.id];
           var idx = p.metas.indexOf(m);
-          var drift = 5 * Math.sin(performance.now() / 2600 + idx * 1.3);
-          target = base + drift;
+          var tSec = performance.now() / 1000;
+          var sway = 3.2 * Math.sin(tSec / 11 + (p.order || 0) * 0.7);   // balanceo del sistema (~69 s)
+          var breath = 1.1 * Math.sin(tSec / 6.5 + idx * 1.1);           // respiración individual (~41 s)
+          target = base + sway + breath;
         }
         if(m._a === undefined) m._a = target;
         m._a += shortestDelta(m._a, target) * 0.2;
@@ -501,6 +516,7 @@
         var mo = stage.querySelector('[data-moon="'+m.id+'"]');
         if(mo){
           var ms = focusId === p.id ? 16 : 9; // §I3: en foco las lunas se ven con mayor resolución
+          mo.style.display = ""; // restaurar visibilidad al salir del foco (v3.2)
           mo.style.width = ms + "px"; mo.style.height = ms + "px";
           mo.style.left = (m._x - ms / 2) + "px";
           mo.style.top = (m._y - ms / 2) + "px";
@@ -631,7 +647,9 @@
     document.getElementById("fhName").style.display = "";
   });
   document.getElementById("fhConfig").addEventListener("click", function(){
-    location.href = "configuracion.html"; // §I8/J4: redirige al panel de gestión pulido
+    // v3.2 §I8/J4: solo redirige a Configuración con la supermeta seleccionada
+    // (no destruye esta pantalla — vuelve con el botón atrás del navegador).
+    location.href = "configuracion.html?super=" + encodeURIComponent(focusId || "");
   });
   function persistSupermetas(){
     try{

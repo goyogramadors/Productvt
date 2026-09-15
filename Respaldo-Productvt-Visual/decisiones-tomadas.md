@@ -281,3 +281,81 @@ K3. **Sistema de 3 colores** en los eventos que aparecen en el calendario:
 K4. **Panel de creación de evento del calendario** (similar al de Google Calendar, sobre la pantalla del calendario): permite definir un **evento o tarea recurrente o puntual** y **asociarlo a una supermeta y su meta concreta**; hay una **casilla chiquitita "Evento invisible"** que **desactiva por completo el resto de la personalización** (elegir meta y supermeta) pero **mantiene** horario, días y la posibilidad de que sea **recurrente semanalmente / cada dos semanas / cada X semanas con fecha de término concreta**.
 
 K5. **Eventos invisibles**: eventos creados desde un calendario que no tienen nada que ver con metas/supermetas — **completamente invisibles** fuera del calendario, solo para efectos del calendario.
+
+## v3.2 (2026-09-15) — Recreación del preview local y cierre de integraciones
+
+Fuente: sesión de reconstrucción tras la transición de herramienta. El creador pidió: "revisa todo lo de respaldo visual y recrea el html local para revisar la app completa y tenerla funcional nuevamente; basate en lo más avanzado que haya". Esta sección registra el diagnóstico, lo que se recreó y el estado exacto para que cualquier sesión futura pueda continuar sin re-diagnosticar.
+
+### L. Diagnóstico del estado roto (qué pasaba y por qué)
+
+L1. `Respaldo-Productvt-Visual/` era una **copia plana** de `01-mockups/mobile/` (sin subcarpeta `mobile/`), y su `preview-app.html` apuntaba a `mobile/*.html` → **rutas rotas**: abrir el preview desde el respaldo mostraba la app muerta. Además faltaba `estadisticas.html` en el respaldo.
+
+L2. `calendario.html` quedó **a medio migrar** durante la pasada v3.1: la sección de modelo de datos sí era v3.1 (SUPERMETAS/CALENDARIOS/rails §K3), pero todo el **render** seguía llamando al modelo viejo (`CATEGORIES`, `CAPAS`, `METAS`, `catById`, `fillColorForMeta`, `layerVis`…) → error de JS inmediato al abrir (el calendario y su botón "crear" "murieron").
+
+L3. `estadisticas.html` seguía **completo en el modelo viejo de categorías** (§K1 las prohíbe).
+
+L4. `cronometro.html` tenía un bug de integración: `captureLink()` leía `sg.calendar` en vez de `sg.calendarId` (el campo real del modelo compartido), y **no persistía los bloques finalizados** hacia el calendario (§D1 incompleto).
+
+L5. `galaxia-v2.html` y `configuracion.html` estaban **sanos** (v3.1 §I y §J completos): no se tocaron salvo copiarlos.
+### M. Qué se recreó (v3.2)
+
+M1. **`calendario.html` reescrito completo y funcional** (misma skin "Papel"):
+   - Sidebar "Tus calendarios" (§K2): visibilidad por checkbox, sub-filas de supermetas vinculadas, **crear** calendario (nombre+color) y **eliminar con confirmación** (✕ chiquitito). Al eliminar un calendario, sus supermetas quedan sin vínculo (crearán uno propio, §D3) y sus eventos propios se borran.
+   - Panel de creación estilo Google Calendar (§K4/§K6): título, toggle **Evento puntual / Tarea recurrente**, casilla chiquitita **"Evento invisible"** que desactiva la asociación a supermeta/meta pero mantiene horario/duración/repetición, selects en cascada **Supermeta → Meta**, fecha/inicio/duración, **repetir cada 1/2/N semanas con fecha de término**.
+   - Sistema de 3 colores con **rallitas verticales** (§K3): relleno = color de la meta; rallita 1 = calendario; rallita 2 = supermeta; invisibles en gris tenue; inversos (antimeta) un solo color sin etiquetas.
+   - Vistas **Año / Mes / Semana / 3 días / Día** con: día actual destacado (badge HOY + fondo), **línea de "ahora"** con punto naranja y refresco cada 30 s en semana/3 días/día (§B4/B5), búsqueda, "Fijar como vista por defecto" (persistida).
+   - **Presionar fuera cierra** los paneles (§B2); **presionar+arrastrar mueve el evento** con **snap de 15 min y cruce entre días** (§B3, persistido por `id@fecha` en overrides); clic en evento abre detalle (editar título/hora/duración, eliminar); clic en vacío del timeline abre el panel de creación prellenado con fecha/hora de la celda.
+   - **§D1**: los bloques terminados del cronómetro aparecen como cuadros "⏱ …" (vencidos marcados "(vencido)") pintados con el color de la meta y las rallitas correspondientes.
+
+M2. **`cronometro.html` parcheado** (sin tocar su máquina de estados): `captureLink()` ahora guarda `supermetaId`/`goalId` y usa `sg.calendarId` (§D2–D3); nueva `persistFinishedBlock(status)` que escribe en `productvt-blocks-v1` al **terminar** ("completed", T7/T10) o **vencer** ("expired", T17) una sesión. Los bloques cancelados **no** crean cuadro.
+
+M3. **`estadisticas.html` reescrito** sobre supermetas/metas (§K1, sin categorías): tiles (min hoy, racha, min del mes), sparkline de 7 días, desglose **por supermeta** y **por meta** del mes, **metas semanales** por supermeta (default 300 min, clave `productvt-weekly-goals-v1`) y **estrella del mes**. Fuente: bloques reales de `productvt-blocks-v1`; si no hay, genera una semana demo derivada de las supermetas y lo avisa.
+
+M4. **`preview-app.html` del respaldo recreado autocontenido**: iframes apuntando a los módulos de la misma carpeta. Abrir `Respaldo-Productvt-Visual/preview-app.html` funciona directamente. La copia canónica `01-mockups/preview-app.html` sigue usando `mobile/` y está sincronizada (mismos archivos copiados a `01-mockups/mobile/`).
+### N. Contrato de claves localStorage compartidas (mockups)
+
+| Clave | Dueño | Consumidores |
+|---|---|---|
+| `productvt-supermetas-v1` | Configuración (CRUD) | Cronómetro, Galaxia, Calendario, Estadísticas |
+| `productvt-capas-v1` | Configuración / Calendario (CRUD de calendarios) | Calendario (compatibilidad histórica con "capas") |
+| `productvt-blocks-v1` | Cronómetro (persistFinishedBlock, §D1) | Calendario (cuadros ⏱), Estadísticas (agregadores) |
+| `productvt-calendario-invisibles-v1` | Calendario (eventos/tareas creados) | Calendario |
+| `productvt-calendario-drag-overrides-v1` | Calendario (arrastres §B3) | Calendario |
+| `productvt-calendario-capas-visibles-v1` | Calendario (visibilidad por calendario) | Calendario |
+| `productvt-calendario-default-view-v1` | Calendario ("Fijar como vista por defecto") | Calendario |
+| `productvt-weekly-goals-v1` | Configuración (pendiente de UI propia) | Estadísticas |
+| `productvt-presets-v1`, `productvt-cancel-phrase` | Cronómetro / Configuración | Cronómetro |
+
+Formato de un bloque en `productvt-blocks-v1`: `{ id, date: "YYYY-MM-DD", startMin, seconds, title, supermetaId, metaId, kind: "evento"|"tarea"|null, anti: boolean, status: "completed"|"expired" }`.
+
+### O. Pendiente registrado (heredado, no nuevo)
+
+O1. Responsive móvil del calendario (preocupación explícita del creador, §B1) — el nuevo calendario hereda el patrón de cajón del anterior; falta pulirlo y revisarlo en pantalla chica.
+O2. Pasada de nomenclatura estandarizada con el creador (§A8).
+O3. Propagar v3/v3.1/v3.2 documento por documento a `docs/` (G).
+O4. UI propia de metas semanales por supermeta en Configuración (hoy solo default 300 min en Estadísticas).
+
+## v3.2b (2026-09-15) — Segunda pasada de afinamiento (correcciones sobre el localhost)
+
+Fuente: feedback del creador tras revisar la app montada en `http://localhost:8471/preview-app.html` (servidor: `Respaldo-Productvt-Visual/servidor-local.js`, puerto 8471). El cronómetro funcionaba perfecto salvo el punto P1; la pantalla de inicio estaba "bastante bien" salvo P2.
+
+### P. Correcciones aplicadas
+
+P1. **Cronómetro — toggles del Paso 1 EXCLUYENTES**: "Usar preset" y "Personalizar" ahora son mutuamente excluyentes (apretar uno apaga el otro directamente, sin cambiar el tamaño de los botones — solo el estado visible). **"+ Nuevo preset"** ya no es un botón secuencial debajo del flujo: vive **dentro de la lista de presets** como chip fantasma final (patrón estándar de menús: un ítem "nuevo" claramente opcional al final de la lista); "Editar lista" queda aparte como gestión.
+
+P2. **Galaxia / Inicio**:
+   - **Vista de foco 100% completa** (§E6 reforzado): bug donde las demás supermetas y sus lunas quedaban congeladas en su última posición y se veían chiquitas — ahora se ocultan (`display:none`) al entrar al foco y se restauran al salir.
+   - **Órbita fluida en la vista general** (§I5 reescrito): la deriva anterior (±5°, periodo ~16 s, fases opuestas entre lunas vecinas) se veía tosca. Ahora el **sistema entero se balancea lento y coherente** (±3.2°, periodo ~69 s) y cada luna "respira" con un desfase mínimo (±1.1°, ~41 s) — movimiento suave, sin tirones.
+   - **Botón ⚙ de la vista de supermeta**: ahora redirige a `configuracion.html?super=<id>` (Configuración con ESA supermeta seleccionada) en vez de solo `configuracion.html` — no destruye la pantalla de foco (se vuelve con atrás).
+
+P3. **Calendario**:
+   - **Tooltip en vivo durante el arrastre** (§B3b): mientras se mueve un evento, un cartel mono sigue al cursor mostrando la **hora nueva en tiempo real** (snap 15 min) y, si se cruza a otro día, "· día N".
+   - **Panel de creación completo (§K4/§K6)**: se agregaron **Calendario** (select con "— automático según supermeta —"), **Color del evento** (color picker; si no se toca, manda el color derivado §K3: meta → supermeta → calendario), **Todo el día** (oculta inicio/duración; el chip se pinta arriba del día con etiqueta "todo el día"). Se mantienen: evento puntual / tarea recurrente (1/2/N semanas + término), invisible, supermeta → meta, fecha/hora/duración.
+   - **Editor completo para eventos del usuario** (los demo y los bloques ⏱ mantienen el editor simple con reposición por override): mismo set de campos que la creación, más repetición editable en eventos existentes y preselección de valores actuales.
+   - Escape HTML de títulos (`esc()`) en chips y paneles.
+
+P4. **Configuración — edición como POPUP (§J4)**: el lápiz de supermetas y metas ya no hace scroll hacia un formulario inline; abre un **popup** centrado (se cierra presionando fuera o con ✕). El botón ⚙ de la galaxia llega vía `?super=<id>` y **abre directo el popup de esa supermeta** al cargar.
+
+### Q. Nota operativa del localhost
+
+Q1. El servidor (`servidor-local.js`) sirve los archivos desde disco en cada request: **no hace falta reiniciarlo** tras editar los mockups — basta refrescar con Ctrl+F5. Relanzar con `node servidor-local.js [puerto]` (default 8471).

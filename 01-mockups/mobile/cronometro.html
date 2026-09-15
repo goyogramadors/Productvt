@@ -194,6 +194,8 @@
   .sq-btn[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); }
   .sq-btn[aria-pressed="true"] strong{ color: var(--accent); }
   .presets-tools{ display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+  .choice.new-preset{ background: transparent; border: 1px dashed var(--rule-strong); color: var(--muted); font-size: 12.5px; }
+  .choice.new-preset:hover{ border-color: var(--accent); color: var(--accent); }
   .step-title{
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 11px; letter-spacing: .05em; text-transform: uppercase;
@@ -640,16 +642,43 @@
     if(goal && state.blockKind === "evento") target = goal.eventos.filter(function(e){ return e.id === state.chosenTargetId; })[0];
     if(goal && state.blockKind === "tarea") target = goal.tareas.filter(function(t){ return t.id === state.chosenTargetId; })[0];
     return {
-      supermeta: sg.name, anti: !!sg.anti,
-      goal: goal ? goal.name : null,
+      supermeta: sg.name, supermetaId: sg.id, anti: !!sg.anti,
+      goal: goal ? goal.name : null, goalId: goal ? goal.id : null,
       kind: state.blockKind,
       target: target ? target.name : null,
       targetSeconds: target && target.targetSeconds ? target.targetSeconds : null,
       // v3 §D2–D3: calendario vinculado; si no hay, la supermeta crea uno propio con su nombre y color
-      calendar: sg.calendar || sg.name,
-      ownCalendar: !sg.calendar,
-      color: sg.calendar ? null : sg.color
+      calendar: sg.calendarId || sg.name,
+      ownCalendar: !sg.calendarId,
+      color: sg.calendarId ? null : sg.color
     };
+  }
+
+  // v3 §D1: TODO bloque de cronómetro al ser finalizado se crea como cuadro en el
+  // calendario (clave compartida productvt-blocks-v1; el calendario lo pinta con el
+  // color de la meta y las rallitas de calendario/supermeta, §K3).
+  function persistFinishedBlock(status){
+    try{
+      if(!session) return;
+      var link = session.link || {};
+      var blocks = JSON.parse(localStorage.getItem("productvt-blocks-v1") || "[]");
+      var now = new Date();
+      var p = function(n){ return (n < 10 ? "0" : "") + n; };
+      var startMin = Math.max(0, (now.getHours()*60 + now.getMinutes()) - Math.round((session.effectiveStudySeconds || 0)/60));
+      blocks.push({
+        id: "b" + now.getTime(),
+        date: now.getFullYear()+"-"+p(now.getMonth()+1)+"-"+p(now.getDate()),
+        startMin: startMin,
+        seconds: session.effectiveStudySeconds || 0,
+        title: link.target || link.goal || link.supermeta || "Bloque de estudio",
+        supermetaId: state.chosenSupermetaId || null,
+        metaId: state.chosenGoalId || null,
+        kind: state.blockKind || null,
+        anti: !!link.anti,
+        status: status
+      });
+      localStorage.setItem("productvt-blocks-v1", JSON.stringify(blocks));
+    }catch(e){}
   }
 
   function enterStudyRunning(){ // T1 / T9 / T13 (retorno) / T14->T13
@@ -729,7 +758,7 @@
   }
 
   function continueStudy(){ enterStudyRunning(); } // T9
-  function endSession(){ goto("session_completed"); } // T7 / T10
+  function endSession(){ persistFinishedBlock("completed"); goto("session_completed"); } // T7 / T10 + §D1
 
   function requestLunch(){ // T11 / T12
     if(!isLunchAvailable()) return;
@@ -764,7 +793,7 @@
     }
   }
 
-  function handleExpire(){ goto("session_expired"); } // T17, auto
+  function handleExpire(){ persistFinishedBlock("expired"); goto("session_expired"); } // T17, auto + §D1
 
   function startInverso(){
     state.targetSeconds = config.inversoMinutes * 60;
@@ -881,20 +910,24 @@
       html += '<div class="state-label">'+(mode==="normal"?"Elegí qué vas a estudiar":"Elegí cómo vas a descansar")+'</div>';
 
       if(mode === "normal"){
-        // ---- v3.1 §H1: paso 1 no excluyente — dos toggles cuadrados ----
-        html += '<div class="step-block'+(state.presetOn ? " done" : "")+'">';
+        // ---- v3.1 §H1 (v3.2: excluyentes) — dos toggles cuadrados de igual tamaño; el estado marcado es el que se ve ----
+        html += '<div class="step-block'+(state.presetOn || state.personalizeOn ? " done" : "")+'">';
         html += '<div class="step-title">Paso 1 · Formato de bloques</div>';
         html += '<div class="choices">' +
           '<button class="sq-btn" id="usePresetToggle" aria-pressed="'+(state.presetOn?"true":"false")+'" type="button"><strong>Usar preset</strong>lista de formatos guardados</button>' +
           '<button class="sq-btn" id="personalizeToggle" aria-pressed="'+(state.personalizeOn?"true":"false")+'" type="button"><strong>Personalizar</strong>definir bloques a mano</button>' +
           '</div>';
         if(state.presetOn){
+          // v3.2 §H1b: "+ Nuevo preset" vive DENTRO de la lista como una alternativa más
+          // (chip fantasma al final, claramente opcional), no como un paso secuencial;
+          // "Editar" queda aparte como gestión de la lista.
           html += '<div class="choices" id="presetChoices">' + presets.map(function(p){
             return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'">'+p.name+(state.editingPresets?'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span>':'')+'</button>';
-          }).join("") + '</div>';
+          }).join("") +
+            '<button class="choice new-preset" id="newPresetBtn" type="button" title="Definir bloques a mano y guardarlos como formato">+ Nuevo preset</button>' +
+            '</div>';
           html += '<div class="presets-tools">' +
-            '<button class="mini-btn" id="newPresetBtn" type="button">Crear nuevo preset</button>' +
-            '<button class="mini-btn ghost" id="editPresetsBtn" type="button">'+(state.editingPresets ? "Listo" : "Editar")+'</button>' +
+            '<button class="mini-btn ghost" id="editPresetsBtn" type="button">'+(state.editingPresets ? "Listo" : "Editar lista")+'</button>' +
             '</div>';
         }
         html += '</div>';
@@ -1090,16 +1123,19 @@
       });
     });
 
-    // ---- v3 §C2/§C3: handlers del flujo por pasos ----
-    // ---- v3.1 §H1–H2: toggles cuadrados del paso 1 y gestión de presets ----
+    // ---- v3.2 §H1: toggles EXCLUYENTES — apretar uno apaga el otro directamente
+    // (sin cambiar tamaño de los botones, solo el estado visible) ----
     if(el = document.getElementById("usePresetToggle")) el.addEventListener("click", function(){
-      state.presetOn = !state.presetOn;
-      if(!state.presetOn) state.showSaveForm = false; // salir del modo preset descarta el preset en creación
+      state.presetOn = true;
+      state.personalizeOn = false;
+      state.editingPresets = false;
+      state.showSaveForm = false;
       render();
     });
     if(el = document.getElementById("personalizeToggle")) el.addEventListener("click", function(){
-      state.personalizeOn = !state.personalizeOn;
-      if(!state.personalizeOn) state.showSaveForm = false;
+      state.personalizeOn = true;
+      state.presetOn = false;
+      state.editingPresets = false;
       render();
     });
     if(el = document.getElementById("newPresetBtn")) el.addEventListener("click", function(){

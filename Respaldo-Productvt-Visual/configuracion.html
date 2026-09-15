@@ -58,6 +58,11 @@
   }
   .mini-btn.danger{ color: var(--danger); border-color: var(--danger); }
   .mini-btn.xs{ padding: 3px 8px; font-size: 11px; }
+  /* v3.2 §J4: popups de edición (en vez de redirección hacia abajo dentro de la pestaña) */
+  .overlay{ position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.4); display: flex; align-items: flex-start; justify-content: center; padding: 7vh 12px 12px; overflow-y: auto; }
+  .popup-sheet{ background: var(--paper-raised); border: 1px solid var(--rule-strong); border-radius: 14px; width: 100%; max-width: 420px; padding: 14px 16px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .popup-head{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .popup-head h3{ margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; }
   .form{ display: flex; flex-direction: column; gap: 9px; border: 1px dashed var(--rule-strong); border-radius: 10px; padding: 11px; background: var(--paper); }
   .form input, .form select, .form textarea{
     background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong);
@@ -121,6 +126,13 @@
   .add-goal-row{ display: flex; gap: 6px; padding: 7px 0 0 22px; }
   .anti-hint{ font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
   .tools{ display: flex; gap: 6px; align-items: center; }
+  /* ---- Selector de color personalizado RGB · v3.4 §C1 ---- */
+  .custom-color-wrap{ display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+  .custom-color-wrap span{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; color: var(--muted); }
+  .custom-color{
+    width: 26px; height: 26px; padding: 0; border: 1px solid var(--rule-strong);
+    border-radius: 6px; background: none; cursor: pointer;
+  }
   /* ---- Botones de icono (lápiz / eliminar) · v3.1 §J4–J5 ---- */
   .icon-btn{
     border: 1px solid var(--rule-strong); background: var(--paper); color: var(--ink);
@@ -350,17 +362,37 @@
   function saveSupermetas(){ saveJSON(SUPER_KEY, SUPERMETAS); }
   function sgById(id){ return SUPERMETAS.filter(function(s){ return s.id === id; })[0] || null; }
   function goalPct(g){
-    if(!g.tareas.length) return 0;
-    return Math.round(g.tareas.filter(function(t){ return t.done; }).length / g.tareas.length * 100);
+    // v3.4 §I7: % PONDERADO por importancia (Alta 3, Media 2, Baja 1). Debe ser idéntico al
+    // cálculo de la galaxia y las estadísticas: una tarea clave pesa más que una secundaria.
+    var total = 0, done = 0;
+    g.tareas.forEach(function(t){
+      var w = Number(t.weight) || 2; total += w; if(t.done) done += w;
+    });
+    (g.eventos || []).forEach(function(e){
+      var w = Number(e.weight) || 2; total += w; if(e.done) done += w;
+    });
+    if(!total) return 0;
+    return Math.round(done / total * 100);
   }
   function sgPct(sg){
-    var all = [];
-    sg.goals.forEach(function(g){ all = all.concat(g.tareas); });
-    if(!all.length) return 0;
-    return Math.round(all.filter(function(t){ return t.done; }).length / all.length * 100);
+    // v3.4 §I7: el % de la supermeta se pondera por la importancia de cada tarea/evento
+    // de todas sus metas (misma fórmula que goalPct y que la galaxia).
+    var total = 0, done = 0;
+    sg.goals.forEach(function(g){
+      g.tareas.forEach(function(t){
+        var w = Number(t.weight) || 2; total += w; if(t.done) done += w;
+      });
+      (g.eventos || []).forEach(function(e){
+        var w = Number(e.weight) || 2; total += w; if(e.done) done += w;
+      });
+    });
+    if(!total) return 0;
+    return Math.round(done / total * 100);
   }
 
-  // ---- Paleta reutilizable (v3.1 §J1–J2) ----
+  // ---- Paleta reutilizable (v3.1 §J1–J2 · v3.4 §C1 añade RGB personalizado) ----
+  // Además de los swatches hay un selector de color libre: cualquier color RGB vale,
+  // tanto para calendarios como para supermetas y metas.
   function buildPalette(container, color, onSelect){
     container.innerHTML = "";
     PALETTE.forEach(function(col){
@@ -371,7 +403,24 @@
       b.addEventListener("click", function(){ onSelect(col); });
       container.appendChild(b);
     });
+    // v3.4 §C1: selector RGB libre — el valor vive en el mismo `state.color`
+    var isCustom = PALETTE.indexOf(color) < 0;
+    var wrap = document.createElement("span");
+    wrap.className = "custom-color-wrap";
+    var inp = document.createElement("input");
+    inp.type = "color";
+    inp.className = "custom-color" + (isCustom ? " active" : "");
+    inp.title = "Color personalizado RGB";
+    inp.value = /^#[0-9a-fA-F]{6}$/.test(color || "") ? color : PALETTE[0];
+    inp.setAttribute("aria-pressed", isCustom ? "true" : "false");
+    inp.addEventListener("input", function(){ onSelect(inp.value); });
+    var tag = document.createElement("span");
+    tag.textContent = isCustom ? color.toUpperCase() : "RGB";
+    wrap.appendChild(inp);
+    wrap.appendChild(tag);
+    container.appendChild(wrap);
   }
+  function buildPaletteCustom(container, color, onSelect){ buildPalette(container, color, onSelect); }
 
   // ---- Plazos: máx. 1 año, mín. 1 segundo (v3.1 §I6) ----
   function toLocalInput(ms){
@@ -388,6 +437,26 @@
     input.value = toLocalInput(t);
     return new Date(t).toISOString();
   }
+
+  // ---- v3.4 §B6: importancia por tarea (peso 1–3) ----
+  // El peso define cuánto aporta cada tarea al % de la meta (y por ende de la supermeta).
+  // Se escribe en el textarea como «Nombre | alta» (también «media»/«baja» o 1/2/3).
+  // Sin sufijo, la importancia por defecto es Media (2).
+  function weightFromTag(s){
+    s = String(s || "").trim().toLowerCase();
+    if(s === "alta" || s === "a" || s === "3") return 3;
+    if(s === "baja" || s === "b" || s === "1") return 1;
+    return 2;
+  }
+  function impWord(w){ return w >= 3 ? "alta" : (w === 2 ? "media" : "baja"); }
+  function parseTaskLine(line){
+    var parts = String(line).split("|");
+    var name = parts[0].trim();
+    if(parts.length < 2) return { name: name, weight: 2 };
+    return { name: name, weight: weightFromTag(parts[1]) };
+  }
+  function taskLineOf(t){ return t.name + (impOfW(t.weight) !== 2 ? " | " + impWord(impOfW(t.weight)) : ""); }
+  function impOfW(w){ w = Number(w) || 2; return w < 1 ? 1 : (w > 3 ? 3 : Math.round(w)); }
 
   // ---- Confirmación obligatoria al eliminar (v3.1 §J5, §K4) ----
   var confirmBox = document.getElementById("confirmBox");
@@ -651,6 +720,38 @@
     sel.value = cur && valid.filter(function(s){ return s.id === cur; }).length ? cur : valid[0].id;
   }
 
+  // ---- v3.2 §J4: los formularios de supermeta y meta se abren como POPUP (§B2:
+  // presionar fuera cierra), no como redirección hacia abajo de la pestaña ----
+  var popupOverlay = null;
+  function openPopup(formEl, title){
+    closePopup();
+    popupOverlay = document.createElement("div");
+    popupOverlay.className = "overlay";
+    var box = document.createElement("div");
+    box.className = "popup-sheet";
+    var head = document.createElement("div");
+    head.className = "popup-head";
+    var h = document.createElement("h3");
+    h.textContent = title;
+    var x = document.createElement("button");
+    x.className = "mini-btn xs"; x.type = "button"; x.textContent = "✕";
+    x.addEventListener("click", closePopup);
+    head.appendChild(h); head.appendChild(x);
+    box.appendChild(head);
+    formEl.classList.remove("hidden");
+    box.appendChild(formEl);
+    popupOverlay.appendChild(box);
+    document.body.appendChild(popupOverlay);
+    popupOverlay.addEventListener("pointerdown", function(ev){ if(ev.target === popupOverlay) closePopup(); });
+  }
+  function closePopup(){
+    if(!popupOverlay) return;
+    var form = popupOverlay.querySelector(".form");
+    if(form) form.classList.add("hidden");
+    popupOverlay.remove();
+    popupOverlay = null;
+  }
+
   function openSuperForm(sg){
     sfState.editing = sg ? sg.id : null;
     sfState.color = sg ? sg.color : (CALENDARIOS[0] ? CALENDARIOS[0].color : PALETTE[0]);
@@ -662,10 +763,8 @@
       (sg && sg.deadline) ? toLocalInput(new Date(sg.deadline).getTime()) : "";
     document.getElementById("sfAnti").setAttribute("aria-pressed", sfState.anti ? "true" : "false");
     wirePalette(document.getElementById("sfPalette"), sfState, "color");
-    goalForm.classList.add("hidden");
-    superForm.classList.remove("hidden");
+    openPopup(superForm, sg ? "Editar supermeta" : "Nueva supermeta"); // v3.2 §J4: popup, no scroll
     document.getElementById("sfSave").textContent = sg ? "Guardar cambios" : "Crear y añadir su primera meta";
-    try{ superForm.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
   }
 // El color por defecto al asociar un calendario es el del calendario (v3.1 §J1)
   document.getElementById("sfCalendar").addEventListener("change", function(){
@@ -685,7 +784,7 @@
   });
   document.getElementById("sfCancel").addEventListener("click", function(){
     sfState.editing = null;
-    superForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
   });
   document.getElementById("sfSave").addEventListener("click", function(){
     var nameEl = document.getElementById("sfName");
@@ -706,7 +805,7 @@
         sg.anti = anti;
         if(anti) sg.goals = []; // la antimeta no da puntaje ni tiene metas internas (v3 §A7)
         saveSupermetas();
-        superForm.classList.add("hidden");
+        closePopup(); // v3.2 §J4
         sfState.editing = null;
         renderTree(); renderCalendars();
         saved();
@@ -724,7 +823,7 @@
     };
     SUPERMETAS.push(created);
     saveSupermetas();
-    superForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
     renderTree(); renderCalendars();
     saved();
     // v3.1 §J3: crear supermeta obliga a asociarle al menos una meta → altiro se abre su creación
@@ -748,16 +847,14 @@
     document.getElementById("gfDeadline").value =
       (g && g.deadline) ? toLocalInput(new Date(g.deadline).getTime()) : "";
     document.getElementById("gfTasks").value =
-      g ? g.tareas.map(function(t){ return t.name; }).join("\n") : "";
+      g ? g.tareas.map(function(t){ return taskLineOf(t); }).join("\n") : "";
     wirePalette(document.getElementById("gfPalette"), gfState, "color");
-    superForm.classList.add("hidden");
-    goalForm.classList.remove("hidden");
+    openPopup(goalForm, g ? "Editar meta" : "Nueva meta"); // v3.2 §J4: popup, no scroll
     document.getElementById("gfSave").textContent = g ? "Guardar cambios" : "Crear meta";
-    try{ goalForm.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
   }
 document.getElementById("gfCancel").addEventListener("click", function(){
     gfState.editing = null;
-    goalForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
   });
   document.getElementById("gfSave").addEventListener("click", function(){
     var nameEl = document.getElementById("gfName");
@@ -788,7 +885,7 @@ document.getElementById("gfCancel").addEventListener("click", function(){
         target.goals.push(found);
       }
       saveSupermetas();
-      goalForm.classList.add("hidden");
+      closePopup(); // v3.2 §J4
       gfState.editing = null;
       renderTree(); renderCalendars();
       saved();
@@ -801,7 +898,7 @@ document.getElementById("gfCancel").addEventListener("click", function(){
       eventos: []
     });
     saveSupermetas();
-    goalForm.classList.add("hidden");
+    closePopup(); // v3.2 §J4
     renderTree(); renderCalendars();
     saved();
   });
@@ -832,6 +929,14 @@ document.getElementById("gfCancel").addEventListener("click", function(){
   // ---- Arranque ----
   renderCalendars();
   renderTree();
+  // v3.2 §I8/J4: redirección desde la galaxia — ?super=<id> abre el popup de esa supermeta
+  try{
+    var qsSuper = new URLSearchParams(location.search).get("super");
+    if(qsSuper){
+      var targetSg = sgById(qsSuper);
+      if(targetSg) openSuperForm(targetSg);
+    }
+  }catch(e){}
 })();
 </script>
 </body>

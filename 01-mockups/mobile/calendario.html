@@ -1,248 +1,250 @@
-<title>Almanaque por Capas</title>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendario</title>
+<!-- Mockup interactivo del calendario — RECREACIÓN v3.2 (2026-09-15).
+     El archivo anterior quedó a medio migrar (modelo de datos v3.1 pero render del
+     modelo viejo con CATEGORIES/CAPAS) y lanzaba errores de JS. Esta es la versión
+     completa y funcional de la enmienda v3.1 §K (decisiones-tomadas.md):
+     · LAS CATEGORÍAS NO EXISTEN (§K1): todo se gestiona en supermetas y metas.
+     · CALENDARIOS (§K2): entidades independientes, gestionables aquí (crear/eliminar
+       con confirmación) y desde Configuración; una supermeta puede vincularse a uno.
+     · 3 colores por evento (§K3): relleno = color de la META; rallita vertical 1 =
+       color del CALENDARIO; rallita vertical 2 = color de la SUPERMETA. Eventos
+       inversos (antimeta): un solo color, sin etiquetas.
+     · Eventos invisibles (§K4): checkbox en el panel de creación; desactiva la
+       asociación a supermeta/meta pero mantiene horario, días y repetición.
+     · Panel de creación estilo Google Calendar (§K6): evento puntual o tarea
+       recurrente (cada 1/2/N semanas con fecha de término), asociable a
+       supermeta → meta, o invisible.
+     · v3 §B: presionar fuera cierra paneles (§B2), presionar+arrastrar mueve el
+       evento con snap de 15 min incluso entre días (§B3), día actual destacado y
+       línea de "ahora" en semana/3 días/día (§B4).
+     · §D1: los bloques terminados del cronómetro aparecen como cuadros aquí
+       (clave compartida productvt-blocks-v1). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{
     --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
     --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
-    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --focus: #3A6B54;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --danger-soft: #E9D6CF;
+    --focus: #3A6B54; --now: #C0672B;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
       --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
-      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --danger-soft: #33221D;
+      --focus: #7BB596; --now: #E08B52;
     }
   }
   :root[data-theme="dark"]{
     --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
     --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
-    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --focus: #7BB596;
+    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --danger-soft: #33221D;
+    --focus: #7BB596; --now: #E08B52;
   }
   *{ box-sizing: border-box; }
   html,body{ height: 100%; }
-  body{ background: var(--paper); color: var(--ink); font-family: "Archivo", ui-sans-serif, system-ui, sans-serif; }
-  button, select{ font: inherit; }
+  body{ background: var(--paper); color: var(--ink); font-family: "Archivo", ui-sans-serif, system-ui, sans-serif; margin: 0; }
+  button, select, input{ font: inherit; }
+  button{ cursor: pointer; }
 
-  .app{ display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; max-width: 1180px; margin: 0 auto; }
+  .app{ display: grid; grid-template-columns: 224px 1fr; min-height: 100vh; max-width: 1180px; margin: 0 auto; }
   @media (max-width: 760px){ .app{ grid-template-columns: 1fr; } }
 
-  /* ---- barra lateral de capas (desktop) / cajón (mobile) ---- */
+  /* ---- barra lateral de calendarios (desktop) / cajón (mobile) ---- */
   .layers-panel{
-    border-right: 1px solid var(--rule); padding: 18px 14px; display: flex; flex-direction: column; gap: 14px;
+    border-right: 1px solid var(--rule); padding: 18px 14px; display: flex; flex-direction: column; gap: 12px;
+    background: var(--paper);
   }
   @media (max-width: 760px){
     .layers-panel{
-      position: fixed; inset: 0 20% 0 0; z-index: 40; background: var(--paper); border-right: 1px solid var(--rule-strong);
+      position: fixed; inset: 0 20% 0 0; z-index: 40;
       transform: translateX(-105%); transition: transform .25s ease; overflow-y: auto;
     }
     .layers-panel.open{ transform: translateX(0); box-shadow: 8px 0 24px rgba(0,0,0,.25); }
   }
   .layers-panel h2{ font-family: "Fraunces", Georgia, serif; font-size: 16px; font-weight: 500; margin: 0; }
-  .layer-row{ display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .layer-group-header{ font-weight: 600; margin-top: 6px; }
-  .layer-sub-row{ padding-left: 20px; font-size: 12px; color: var(--muted); }
-  .layer-sub-row .ldel{ font-family: "IBM Plex Mono", monospace; font-size: 9.5px; }
-  .assign-select{
-    font-size: 10.5px; background: var(--paper-raised); color: var(--muted); border: 1px solid var(--rule-strong);
-    border-radius: 5px; padding: 2px 4px;
-  }
-  .layer-row input[type="checkbox"]{ accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
-  .layer-row .swatch{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .layer-row .lname{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .layer-row .lkind{ font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--muted); }
-  .layer-row .ldel{ background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
-  .layer-row .ldel:hover{ color: var(--danger); }
-  .add-layer{
-    display: flex; gap: 6px; margin-top: 4px;
-  }
-  .add-layer input[type="text"]{
+  .layers-panel .note{ font-size: 11px; color: var(--muted); line-height: 1.5; margin: 4px 0 0; }
+  .cal-row{ display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+  .cal-row input[type="checkbox"]{ accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
+  .cal-row .swatch{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .cal-row .lname{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-row .cdel{ background: none; border: none; color: var(--muted); font-size: 12px; padding: 0 2px; }
+  .cal-row .cdel:hover{ color: var(--danger); }
+  .cal-sub-row{ padding-left: 26px; font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .cal-sub-row .swatch{ width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .add-cal{ display: flex; gap: 6px; margin-top: 4px; }
+  .add-cal input[type="text"]{
     flex: 1; font-size: 12.5px; background: var(--paper-raised); color: var(--ink);
-    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 8px;
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 8px; min-width: 0;
   }
-  .add-layer input[type="color"]{ width: 30px; border: none; background: none; padding: 0; cursor: pointer; }
+  .add-cal input[type="color"]{ width: 30px; border: none; background: none; padding: 0; cursor: pointer; }
   .mini-btn{
-    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: var(--paper-raised); color: var(--ink);
-    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 9px; cursor: pointer;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+    background: var(--paper-raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 6px; padding: 6px 9px;
   }
-  .closeLayersBtn{ display: none; }
-  @media (max-width: 760px){ .closeLayersBtn{ display: inline-block; align-self: flex-end; } }
+  .mini-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .nav-links{ display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+  .nav-links a{ font-size: 12px; color: var(--muted); text-decoration: none; }
+  .nav-links a:hover{ color: var(--accent); }
 
-  .backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 35; display: none; }
-  .backdrop.show{ display: block; }
-
-  /* ---- barra superior: navegación, vistas, hoy ---- */
-  .main{ padding: 12px 16px 24px; min-width: 0; }
-  .search-input{
-    font-size: 12.5px; background: var(--paper-raised); color: var(--ink);
-    border: 1px solid var(--rule-strong); border-radius: 7px; padding: 6px 10px; width: 140px;
-  }
-  .search-hit{ outline: 2px solid var(--danger); outline-offset: -1px; }
-  /* ---- enmienda v3 §B4: día actual destacado ---- */
-  .month-day.today{ box-shadow: inset 0 0 0 2px var(--accent); }
-  .month-day.today .num{ color: var(--accent); font-weight: 700; }
-  .tl-day-head.today{ color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
-  .tl-day-head .hoy{
-    font-family: "IBM Plex Mono", monospace; font-size: 9px; letter-spacing: .06em;
-    color: var(--accent-ink); background: var(--accent); border-radius: 8px; padding: 1px 6px; vertical-align: 1px;
-  }
-  /* ---- enmienda v3 §B3: evento arrastrable ---- */
-  .tl-event{ cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-  .tl-event.dragging{ opacity: .85; cursor: grabbing; box-shadow: 0 4px 12px rgba(0,0,0,.25); z-index: 5; }
-  .tl-day-col.drag-over{ background: var(--accent-soft); }
-  .topbar{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .layersToggleBtn{ display: none; }
-  @media (max-width: 760px){ .layersToggleBtn{ display: inline-flex; } }
+  /* ---- zona principal ---- */
+  .main{ display: flex; flex-direction: column; min-width: 0; padding: 0 14px 20px; }
+  .topbar{ display: flex; align-items: center; gap: 8px; padding: 14px 0 10px; flex-wrap: wrap; }
   .icon-btn{
-    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--rule-strong); background: var(--paper-raised);
-    color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--rule-strong);
+    background: var(--paper-raised); color: var(--ink); font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
   }
-  .period-label{ font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 500; text-transform: capitalize; margin-right: auto; }
-  .view-switch{ display: flex; gap: 4px; border: 1px solid var(--rule-strong); border-radius: 8px; padding: 3px; }
+  .period-label{ font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 500; min-width: 150px; }
+  .search-input{
+    flex: 1; min-width: 110px; max-width: 220px; font-size: 12.5px;
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong);
+    border-radius: 8px; padding: 6px 9px;
+  }
+  .pin-default{ font-size: 11px; color: var(--muted); background: none; border: none; text-decoration: underline dotted; }
+  .pin-default:hover{ color: var(--accent); }
+  .view-switch{ display: flex; border: 1px solid var(--rule-strong); border-radius: 8px; overflow: hidden; }
   .view-switch button{
-    background: none; border: none; color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
-    font-family: "IBM Plex Mono", monospace;
+    border: none; background: var(--paper-raised); color: var(--muted); font-size: 12px; padding: 7px 10px;
+    border-right: 1px solid var(--rule);
   }
-  .view-switch button[aria-pressed="true"]{ background: var(--accent-soft); color: var(--accent); }
-  .pin-default{
-    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; background: none; color: var(--muted);
-    border: 1px dashed var(--rule-strong); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+  .view-switch button:last-child{ border-right: none; }
+  .view-switch button[aria-pressed="true"]{ background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  #viewRoot{ flex: 1; min-height: 0; }
+  .add-fab{
+    position: fixed; right: 18px; bottom: 18px; z-index: 30;
+    width: 52px; height: 52px; border-radius: 50%; border: none;
+    background: var(--accent); color: var(--accent-ink); font-size: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
   }
-  .pin-default.is-default{ color: var(--accent); border-color: var(--accent); border-style: solid; }
 
   /* ---- vista año ---- */
-  .year-grid{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-  @media (max-width: 1000px){ .year-grid{ grid-template-columns: repeat(4, 1fr); } }
-  @media (max-width: 700px){ .year-grid{ grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 380px){ .year-grid{ grid-template-columns: 1fr; } }
-  .mini-month{ border: 1px solid var(--rule); border-radius: 8px; padding: 6px; cursor: pointer; }
-  .mini-month:hover{ border-color: var(--accent); }
-  .mini-month h3{ font-family: "Fraunces", Georgia, serif; font-size: 13px; font-weight: 500; margin: 0 0 6px; text-transform: capitalize; text-align: center; }
-  .mini-grid{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .mini-day{ aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8.5px; color: var(--muted); position: relative; }
-  .mini-day.has-events::after{ content: ""; position: absolute; bottom: 1px; width: 3px; height: 3px; border-radius: 50%; background: var(--accent); }
-  .mini-day.today{ background: var(--accent-soft); border-radius: 3px; color: var(--accent); }
-  .mini-day.other{ opacity: .3; }
+  .year-grid{ display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+  @media (max-width: 760px){ .year-grid{ grid-template-columns: repeat(2,1fr); } }
+  .year-month{ border: 1px solid var(--rule); border-radius: 10px; background: var(--paper-raised); padding: 8px; }
+  .year-month h4{ margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .ym-grid{ display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+  .ym-cell{ font-size: 9.5px; text-align: center; padding: 2px 0; border-radius: 4px; color: var(--muted); position: relative; }
+  .ym-cell.has-ev{ background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .ym-cell.today{ outline: 2px solid var(--accent); }
 
   /* ---- vista mes ---- */
-  /* min-width:0 en los items de grid evita que texto sin wrap (nowrap) fuerce el ancho de la
-     columna más allá de su 1fr — sin esto, en celular vertical el mes se corría fuera de pantalla
-     y "faltaban" días a la vista. */
-  .weekday-row{ display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
-  .weekday-row span{ min-width: 0; }
-  .month-grid{ display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
-  .month-day{
-    min-height: 78px; min-width: 0; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper-raised);
-    padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; overflow: hidden;
-  }
-  .month-day:hover{ border-color: var(--accent); }
-  .month-day.other-month{ opacity: .35; }
-  .month-day.today{ border-color: var(--accent); border-width: 2px; }
-  .month-day .num{ font-family: "IBM Plex Mono", monospace; font-size: 11px; }
-  .month-day .evt{
-    font-size: 9.5px; border-radius: 3px; padding: 1px 4px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
-  }
-  .month-day .more{ font-family: "IBM Plex Mono", monospace; font-size: 8.5px; color: var(--muted); }
-  @media (max-width: 480px){
-    .month-grid{ gap: 2px; }
-    .month-day{ min-height: 58px; padding: 3px; font-size: 10px; }
-    .month-day .num{ font-size: 9.5px; }
-    .month-day .evt{ font-size: 8px; padding: 0 2px; }
-  }
-  @media (max-width: 360px){
-    .month-day{ min-height: 48px; }
-    .month-day .evt{ display: none; } /* en pantallas muy chicas, el punto de "has-events" alcanza */
-    .month-day.has-events::after{ content:""; display:block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin:0 auto; }
-  }
+  .month-grid{ display: grid; grid-template-columns: repeat(7,1fr); border-top: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+  .month-head{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--muted); text-align: center; padding: 4px 0; border-bottom: 1px solid var(--rule); }
+  .month-cell{ border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); min-height: 86px; padding: 3px; cursor: pointer; }
+  .month-cell.other{ opacity: .45; }
+  .month-cell .dnum{ font-size: 11px; color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .month-cell.today{ background: var(--accent-soft); }
+  .month-cell.today .dnum{ color: var(--accent); font-weight: 700; }
+  .m-event{ margin: 1px 0; font-size: 10px; border-radius: 4px; padding: 1px 4px 1px 7px; color: #fff; position: relative; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-  /* ---- vistas semana/3 días/día: grilla horaria ---- */
-  .timeline{ display: grid; grid-template-columns: 44px 1fr; overflow-x: auto; }
-  .tl-hours{ display: flex; flex-direction: column; flex: none; }
-  .tl-hour-label{ height: 44px; font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--muted); text-align: right; padding-right: 6px; transform: translateY(-6px); }
-  .tl-days{ display: grid; min-width: 0; }
-  .tl-day-col{ border-left: 1px solid var(--rule); position: relative; min-width: 84px; }
-  /* en celular, sacamos el mínimo fijo para que semana/3 días entren completas sin scroll horizontal */
-  @media (max-width: 480px){
-    .timeline{ grid-template-columns: 30px 1fr; }
-    .tl-hour-label{ font-size: 8px; padding-right: 3px; }
-    .tl-day-col{ min-width: 0; }
-    .tl-day-head{ font-size: 9px; padding: 3px 0; }
-    .tl-event{ font-size: 8px; padding: 1px 2px; }
-  }
+  /* ---- timeline (semana / 3 días / día) ---- */
+  .timeline{ display: grid; grid-template-columns: 46px 1fr; height: calc(100vh - 120px); min-height: 380px; }
+  .tl-hours{ position: relative; }
+  .tl-hour-label{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; color: var(--muted); text-align: right; padding-right: 6px; transform: translateY(-6px); }
+  .tl-days{ display: grid; overflow-y: auto; }
+  .tl-day-col{ border-left: 1px solid var(--rule); position: relative; cursor: pointer; }
   .tl-day-head{
-    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted); text-align: center; padding: 4px 0;
-    border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--paper); text-transform: capitalize;
+    position: sticky; top: 0; z-index: 5; text-align: center; font-size: 11.5px; padding: 6px 0;
+    background: var(--paper); border-bottom: 1px solid var(--rule); color: var(--muted);
   }
-  .tl-day-head.today{ color: var(--accent); font-weight: 600; }
-  .tl-slot{ height: 44px; border-bottom: 1px dashed var(--rule); }
+  .tl-day-head.today{ color: var(--accent); font-weight: 700; }
+  .tl-day-head .hoy{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8.5px; background: var(--accent); color: var(--accent-ink); border-radius: 4px; padding: 1px 4px; margin-left: 4px; }
+  .tl-slot{ border-bottom: 1px dashed var(--rule); }
   .tl-event{
-    position: absolute; left: 3px; right: 3px; border-radius: 5px; padding: 2px 5px; color: #fff; font-size: 10px;
-    overflow: hidden; cursor: pointer;
+    position: absolute; left: 3px; right: 5px; border-radius: 6px; padding: 2px 5px 2px 10px;
+    font-size: 10.5px; color: #fff; overflow: hidden; cursor: grab; z-index: 2;
+    box-shadow: 0 1px 3px rgba(0,0,0,.18);
   }
-  .tl-now{
-    position: absolute; left: -6px; right: 0; height: 2px; background: var(--danger); z-index: 3; pointer-events: none;
-  }
-  .tl-now::before{
-    content: ""; position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+  .tl-event .t{ font-weight: 600; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .tl-event .h{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8.5px; opacity: .85; display: block; }
+  .tl-event.dragging{ opacity: .75; z-index: 20; cursor: grabbing; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+  /* §K3: rallitas verticales paralelas al lado izquierdo (estilo Google Calendar) */
+  .rail{ position: absolute; left: 3px; top: 2px; bottom: 2px; width: 2.5px; border-radius: 2px; }
+  .rail-1{ left: 3px; } .rail-2{ left: 6.5px; }
+  .m-event .rail{ top: 1px; bottom: 1px; } .m-event .rail-1{ left: 2px; } .m-event .rail-2{ left: 5px; }
+  .tl-now{ position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid var(--now); z-index: 6; pointer-events: none; }
+  .tl-now::before{ content: ""; position: absolute; left: -1px; top: -4px; width: 7px; height: 7px; border-radius: 50%; background: var(--now); }
+  /* v3.2 §B3b: tooltip en vivo mientras se arrastra un evento (hora nueva en tiempo real) */
+  .drag-tip{
+    position: fixed; z-index: 70; pointer-events: none;
+    background: var(--ink); color: var(--paper);
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px;
+    padding: 4px 8px; border-radius: 6px; transform: translate(-50%, -130%);
+    box-shadow: 0 4px 12px rgba(0,0,0,.3); white-space: nowrap;
   }
 
-  .add-fab{
-    position: fixed; right: 20px; bottom: 24px; width: 50px; height: 50px; border-radius: 50%;
-    background: var(--accent); color: var(--accent-ink); border: none; font-size: 22px; cursor: pointer;
-    box-shadow: 0 3px 10px rgba(0,0,0,.2); z-index: 20;
-  }
-
-  /* ---- overlays ---- */
-  .overlay{ position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+  /* ---- overlays / paneles (§B2: presionar fuera cierra) ---- */
+  .overlay{ position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.35); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 12px 12px; overflow-y: auto; }
   .sheet{
-    background: var(--paper); border-top: 1px solid var(--rule); width: 100%; max-width: 460px;
-    border-radius: 18px 18px 0 0; padding: 22px 20px 26px; display: flex; flex-direction: column; gap: 12px;
-    max-height: 84vh; overflow-y: auto;
+    background: var(--paper-raised); border: 1px solid var(--rule-strong); border-radius: 14px;
+    width: 100%; max-width: 430px; padding: 16px 18px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+    display: flex; flex-direction: column; gap: 10px;
   }
-  .sheet h2{ font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 500; margin: 0; text-transform: capitalize; }
-  .sheet .close{ align-self: flex-end; background: none; border: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
-  .item{ display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
-  .item .idot{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .item .itxt{ flex: 1; }
-  .item .itime{ font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); }
-  .empty{ font-size: 13px; color: var(--muted); text-align: center; padding: 8px 0; }
-  .field{ display: flex; flex-direction: column; gap: 5px; }
-  .field label{ font-size: 11px; color: var(--muted); font-family: "IBM Plex Mono", monospace; }
-  .field input, .field select{
-    font-size: 13.5px; background: var(--paper-raised); color: var(--ink);
-    border: 1px solid var(--rule-strong); border-radius: 7px; padding: 8px 10px;
+  .sheet h2{ margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 500; }
+  .sheet .close{ align-self: flex-end; background: none; border: none; color: var(--muted); font-size: 12px; text-decoration: underline dotted; }
+  .field{ display: flex; flex-direction: column; gap: 3px; }
+  .field label{ font-size: 11px; color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .field input[type="text"], .field input[type="date"], .field input[type="time"], .field input[type="number"], .field select{
+    font-size: 13px; background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 8px; padding: 8px 9px; width: 100%;
   }
   .row2{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .btn{ border: none; border-radius: 9px; padding: 12px 16px; font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; background: var(--accent); color: var(--accent-ink); }
-  .note{ font-size: 10.5px; color: var(--muted); line-height: 1.5; }
-  .choice-cards{ display: flex; flex-direction: column; gap: 10px; }
-  .choice-card{
-    display: flex; align-items: center; gap: 14px; text-align: left; border: 1px solid var(--rule-strong);
-    background: var(--paper-raised); border-radius: 10px; padding: 16px; cursor: pointer; color: var(--ink); width: 100%;
+  .row3{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn{
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 9px;
+    padding: 10px 12px; font-size: 13.5px; font-weight: 600;
   }
-  .choice-card:hover{ border-color: var(--accent); }
-  .choice-card .ic{ font-size: 24px; }
-  .choice-card strong{ display: block; font-family: "Fraunces", Georgia, serif; font-size: 15px; font-weight: 500; }
-  .choice-card span{ font-size: 12px; color: var(--muted); }
+  .btn.ghost{ background: none; border: 1px solid var(--rule-strong); color: var(--ink); font-weight: 400; }
+  .btn.danger{ background: var(--danger); }
+  .kind-toggle{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kind-toggle button{
+    border: 1.5px solid var(--rule-strong); background: var(--paper); color: var(--ink);
+    border-radius: 9px; padding: 9px; font-size: 12.5px;
+  }
+  .kind-toggle button[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .inv-check{ display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .inv-check input{ width: 14px; height: 14px; accent-color: var(--accent); }
+  .item{ display: flex; align-items: center; gap: 9px; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+  .item .idot{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .item .itxt{ flex: 1; }
+  .item .itime{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+  .empty{ color: var(--muted); font-size: 12.5px; }
+  .sheet .hintbox{ font-size: 11px; color: var(--muted); line-height: 1.5; border-left: 3px solid var(--rule-strong); padding-left: 8px; }
+  .confirm-box{ border: 1px solid var(--danger); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .confirm-box p{ margin: 0; font-size: 12.5px; color: var(--danger); }
+  .confirm-box .row2 .btn{ padding: 7px; font-size: 12px; }
 </style>
-
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380..520;1,9..144,380..520&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</head>
+<body>
 
 <div class="app">
-  <div class="backdrop" id="backdrop"></div>
+  <div id="backdrop" style="display:none; position:fixed; inset:0; z-index:35; background:rgba(0,0,0,.3);"></div>
   <aside class="layers-panel" id="layersPanel">
-    <button class="mini-btn closeLayersBtn" id="closeLayers">cerrar ✕</button>
-    <h2>Tus capas</h2>
-    <div id="layerList"></div>
-    <div class="add-layer">
-      <input type="text" id="newLayerName" placeholder="Nueva capa (ej: Horario)">
-      <input type="color" id="newLayerColor" value="#4E6E8E">
-      <button class="mini-btn" id="addLayerBtn">+</button>
+    <button class="mini-btn" id="closeLayers" style="align-self:flex-start">cerrar ✕</button>
+    <h2>Tus calendarios</h2>
+    <div id="calList"></div>
+    <div class="add-cal">
+      <input type="text" id="newCalName" placeholder="Nuevo calendario">
+      <input type="color" id="newCalColor" value="#4E6E8E">
+      <button class="mini-btn" id="addCalBtn">+</button>
     </div>
-    <p class="note">Una capa por cada supermeta (automática) más las que crees vos, sin relación a ninguna meta. Un evento ligado a una meta se pinta con el color de esa meta y una franja del color de su supermeta. Sin meta asociada, sigue el color de categoría de siempre.</p>
+    <p class="note">Los calendarios son independientes: pueden tener una o más supermetas conectadas y crear eventos propios (§K2). Un evento ligado a una meta se pinta con el color de la meta y lleva dos rallitas al costado: calendario y supermeta (§K3). Los invisibles solo viven aquí.</p>
+    <div class="nav-links">
+      <a href="galaxia-v2.html">← Inicio · Galaxia</a>
+      <a href="estadisticas.html">Estadísticas</a>
+    </div>
   </aside>
 
   <main class="main">
     <div class="topbar">
-      <button class="icon-btn layersToggleBtn" id="openLayers">▤</button>
+      <button class="icon-btn" id="openLayers" title="Calendarios">▤</button>
       <button class="icon-btn" id="prevBtn">‹</button>
       <button class="icon-btn" id="nextBtn">›</button>
       <button class="mini-btn" id="todayBtn">Hoy</button>
@@ -261,61 +263,83 @@
   </main>
 </div>
 
-<button class="add-fab" id="fabAdd" title="Agregar evento">+</button>
+<button class="add-fab" id="fabAdd" title="Nuevo evento o tarea">+</button>
 <div id="sheetRoot"></div>
-
 <script>
 (function(){
-  var NAV_URLS = { inicio: "https://claude.ai/code/artifact/918a4c24-9421-4440-b696-463cca63a266" };
-  // ---- v3.1 §K1: LAS CATEGORÍAS NO EXISTEN. Todo se gestiona en metas y supermetas;
-  // aparte están los CALENDARIOS (antes "capas"), que son entidades independientes. ----
-  var SUPER_KEY = "productvt-supermetas-v1";   // misma fuente que Configuración y Galaxia
-  var CALENDARIOS_KEY = "productvt-capas-v1";  // misma clave compartida (compatibilidad)
+  "use strict";
+  // ================================================================
+  // v3.1 §K1: LAS CATEGORÍAS NO EXISTEN. Todo se gestiona en
+  // supermetas y metas; aparte están los CALENDARIOS (antes "capas").
+  // ================================================================
+  var SUPER_KEY = "productvt-supermetas-v1";   // misma fuente que Configuración, Galaxia y Cronómetro
+  var CALENDARIOS_KEY = "productvt-capas-v1";  // clave compartida con Configuración (compatibilidad)
+  var EVENTS_KEY = "productvt-calendario-invisibles-v1";
+  var BLOCKS_KEY = "productvt-blocks-v1";      // §D1: bloques terminados del cronómetro
+  var VIS_KEY = "productvt-calendario-capas-visibles-v1";
+  var VIEW_KEY = "productvt-calendario-default-view-v1";
 
-  function loadSupermetas(){
-    try{
-      var raw = localStorage.getItem(SUPER_KEY);
-      if(raw){
-        var parsed = JSON.parse(raw);
-        if(parsed.length) return parsed;
-      }
-    }catch(e){}
-    return [
-      { id: "sg-titulo", name: "Título", color: "#4E6E8E", anti: false, calendarId: "cap-uni", deadline: null, goals: [
-        { id: "g-ramo1", name: "Ramo 1", color: "#3A6B54", deadline: null, tareas: [], eventos: [] },
-        { id: "g-proyecto", name: "Proyecto", color: "#2E7B84", deadline: null, tareas: [], eventos: [] } ] },
-      { id: "sg-tesis", name: "Tesis", color: "#B9812E", anti: false, calendarId: null, deadline: null, goals: [
-        { id: "g-cap2", name: "Capítulo 2", color: "#8C5A7A", deadline: null, tareas: [], eventos: [] } ] },
-      { id: "antimeta", name: "Antimeta", color: "#9C4A3A", anti: true, calendarId: null, deadline: null, goals: [] }
-    ];
+  function loadJSON(key, fallback){
+    try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch(e){ return fallback; }
   }
-  var SUPERMETAS = loadSupermetas();
-  function saveSupermetas(){ try{ localStorage.setItem(SUPER_KEY, JSON.stringify(SUPERMETAS)); }catch(e){} }
+  function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+  // ---- supermetas y metas (solo lectura aquí: se gestionan en Configuración/Galaxia) ----
+  var SUPERMETAS = loadJSON(SUPER_KEY, null);
+  if(!SUPERMETAS || !SUPERMETAS.length){
+    SUPERMETAS = [
+      { id: "sg-titulo", name: "Título", color: "#4E6E8E", anti: false, calendarId: "cap-uni", deadline: null, goals: [
+        { id: "g-ramo1", name: "Ramo 1", color: "#3A6B54", deadline: null, tareas: [{id:"t1",name:"Guía 3",done:false,targetSeconds:7200}], eventos: [{id:"e1",name:"Certamen 2",when:"viernes"}] },
+        { id: "g-proyecto", name: "Proyecto", color: "#2E7B84", deadline: null, tareas: [{id:"t2",name:"Avance de código",done:false,targetSeconds:5400}], eventos: [] } ] },
+      { id: "sg-tesis", name: "Tesis", color: "#B9812E", anti: false, calendarId: null, deadline: null, goals: [
+        { id: "g-cap2", name: "Capítulo 2", color: "#8C5A7A", deadline: null, tareas: [{id:"t3",name:"Redacción",done:false,targetSeconds:10800}], eventos: [] } ] },
+      { id: "sg-antimeta", name: "Antimeta", color: "#9C4A3A", anti: true, calendarId: null, deadline: null, goals: [] }
+    ];
+    saveJSON(SUPER_KEY, SUPERMETAS);
+  }
   function superById(id){ return SUPERMETAS.filter(function(s){ return s.id === id; })[0] || null; }
   function goalById(id){
     var found = null;
     SUPERMETAS.forEach(function(s){ s.goals.forEach(function(g){ if(g.id === id) found = { goal: g, sup: s }; }); });
     return found;
   }
-  function superOfGoal(id){ var f = goalById(id); return f ? f.sup : null; }
+  function superOfGoal(goalId){ var f = goalById(goalId); return f ? f.sup : null; }
 
-  // ---- Calendarios (v3.1 §K2): entidades independientes, asociables a una o más supermetas ----
-  function loadCalendarios(){
-    try{ var raw = localStorage.getItem(CALENDARIOS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
-    return [{ id: "cap-uni", name: "Universidad", color: "#4E6E8E" }];
+  // ---- calendarios (§K2) ----
+  var CALENDARIOS = loadJSON(CALENDARIOS_KEY, null);
+  if(!CALENDARIOS || !CALENDARIOS.length){
+    CALENDARIOS = [
+      { id: "cap-uni", name: "Universidad", color: "#4E6E8E" },
+      { id: "cap-personal", name: "Personal", color: "#6B8F71" }
+    ];
+    saveJSON(CALENDARIOS_KEY, CALENDARIOS);
   }
-  function saveCalendarios(){ try{ localStorage.setItem(CALENDARIOS_KEY, JSON.stringify(CALENDARIOS)); }catch(e){} }
-  var CALENDARIOS = loadCalendarios();
+  function saveCalendarios(){ saveJSON(CALENDARIOS_KEY, CALENDARIOS); }
   function calById(id){ return CALENDARIOS.filter(function(c){ return c.id === id; })[0] || null; }
   function supersOfCal(calId){ return SUPERMETAS.filter(function(s){ return s.calendarId === calId; }); }
+  // calendario efectivo de una supermeta (§D3: si no está vinculada, crea uno propio con su nombre y color)
+  function effectiveCalOfSup(sup){
+    if(!sup) return null;
+    if(sup.calendarId){ var c = calById(sup.calendarId); if(c) return c; }
+    return { id: "own:" + sup.id, name: sup.name, color: sup.color, own: true };
+  }
+  function calendarIdOfEvent(e){
+    if(e.calendarId) return e.calendarId;
+    if(e.metaId){ var s1 = superOfGoal(e.metaId); if(s1) return effectiveCalOfSup(s1).id; }
+    if(e.supermetaId){ var s2 = superById(e.supermetaId); if(s2) return effectiveCalOfSup(s2).id; }
+    return null;
+  }
 
   // ---- v3.1 §K3: sistema de 3 colores de los eventos del calendario ----
   //  1) relleno del evento = color de la META a la que pertenece
-  //  2) primera etiqueta (rallita vertical) = color del CALENDARIO
-  //  3) segunda etiqueta = color de la SUPERMETA
-  //  Los eventos inversos usan un solo color y se saltan las etiquetas.
+  //  2) primera rallita vertical = color del CALENDARIO
+  //  3) segunda rallita vertical = color de la SUPERMETA
+  //  Eventos inversos (antimeta): un solo color, sin etiquetas. Invisibles: gris tenue.
   function eventGoal(e){ return e.metaId ? goalById(e.metaId) : null; }
+  function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function fillColorForEvent(e){
+    if(e.color) return e.color;            // v3.2 §K6: color elegido en el panel del evento
+    if(e.invisible) return "#8A8F83";
     var f = eventGoal(e);
     if(f) return f.goal.color || f.sup.color;
     var sup = e.supermetaId ? superById(e.supermetaId) : null;
@@ -325,10 +349,9 @@
     return "#6E7368";
   }
   function calRailForEvent(e){
-    if(e.invisible || e.inverse) return null;   // §K5: invisibles; inversos: un solo color
-    var calId = e.calendarId || null;
-    if(!calId && e.metaId){ var sup = superOfGoal(e.metaId); calId = sup ? sup.calendarId : null; }
-    if(!calId && e.supermetaId){ var s = superById(e.supermetaId); calId = s ? s.calendarId : null; }
+    if(e.invisible || e.inverse) return null;
+    var calId = calendarIdOfEvent(e);
+    if(calId && calId.indexOf("own:") === 0) return null; // calendario propio de la supermeta: no hay rallita de calendario
     var cal = calId ? calById(calId) : null;
     return cal ? cal.color : null;
   }
@@ -337,502 +360,777 @@
     var sup = e.metaId ? superOfGoal(e.metaId) : (e.supermetaId ? superById(e.supermetaId) : null);
     return sup ? sup.color : null;
   }
-  // rallitas verticales paralelas al lado izquierdo del evento, estilo Google Calendar (§K3)
   function railsHtml(e){
     var a = calRailForEvent(e), b = superRailForEvent(e);
     if(!a && !b) return "";
-    return '<i class="rail rail-1" style="background:'+(a||b)+'"></i>' +
-           (b ? '<i class="rail rail-2" style="background:'+b+'"></i>' : "");
+    var html = '<i class="rail rail-1" style="background:'+(a||b)+'"></i>';
+    if(b && a) html += '<i class="rail rail-2" style="background:'+b+'"></i>';
+    return html;
+  }
+  function labelForEvent(e){
+    var f = eventGoal(e);
+    var bits = [];
+    if(f) bits.push(f.sup.name + " · " + f.goal.name);
+    else if(e.supermetaId && superById(e.supermetaId)) bits.push(superById(e.supermetaId).name);
+    if(e.kind === "tarea") bits.push("tarea" + (e.repeatWeeks ? " c/" + e.repeatWeeks + " sem" : " recurrente"));
+    if(e.invisible) bits.push("invisible");
+    if(e.fromBlock) bits.push("bloque ⏱");
+    return bits.length ? bits.join(" · ") : "";
   }
 
-  var VIS_KEY = "productvt-calendario-capas-visibles-v1";
-  function loadVis(){ try{ var raw = localStorage.getItem(VIS_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
-  function saveVis(){ try{ localStorage.setItem(VIS_KEY, JSON.stringify(calVis)); }catch(e){} }
-  var calVis = loadVis();
+  // ---- visibilidad por calendario (§K2) ----
+  var calVis = loadJSON(VIS_KEY, {});
   function isVisible(key){ return calVis[key] !== false; }
-  // visibilidad por calendario (v3.1 §K2): el evento se esconde si su calendario está desmarcado
   function eventVisible(e){
-    var calId = e.calendarId || null;
-    if(!calId && e.metaId){ var s1 = superOfGoal(e.metaId); calId = s1 ? s1.calendarId : null; }
-    if(!calId && e.supermetaId){ var s2 = superById(e.supermetaId); calId = s2 ? s2.calendarId : null; }
-    if(!calId) return true;                     // sin calendario: agrupado por su supermeta
+    var calId = calendarIdOfEvent(e);
+    if(!calId) return true;
     return isVisible("cal:" + calId);
   }
 
-  var EVENTS_KEY = "productvt-calendario-invisibles-v1";
-  function loadUserEvents(){ try{ var raw = localStorage.getItem(EVENTS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
-  function saveUserEvents(){ try{ localStorage.setItem(EVENTS_KEY, JSON.stringify(userEvents)); }catch(e){} }
-  var userEvents = loadUserEvents();
+  // ---- eventos creados por la persona (persistidos) ----
+  var userEvents = loadJSON(EVENTS_KEY, []);
+  function saveUserEvents(){ saveJSON(EVENTS_KEY, userEvents); }
 
-  // ---- enmienda v3 §B3 — arrastre de eventos ----
-  // El arrastre persiste por id (incluye los eventos demo deterministas, vía overrides).
+  // ---- §D1: bloques terminados del cronómetro (productvt-blocks-v1) ----
+  var cronoBlocks = loadJSON(BLOCKS_KEY, []);
+  function blocksAsEvents(){
+    return cronoBlocks.map(function(b){
+      return {
+        id: b.id, title: b.title || "Bloque de estudio", date: b.date, startMin: b.startMin,
+        minutes: Math.max(15, Math.round((b.seconds || b.minutes * 60 || 0) / 60)) || 30,
+        calendarId: b.calendarId || null, supermetaId: b.supermetaId || null, metaId: b.metaId || null,
+        invisible: false, inverse: !!b.anti, kind: b.kind || "tarea", repeatWeeks: 0, until: null,
+        fromBlock: true, status: b.status || "completed"
+      };
+    });
+  }
+
+  // ---- seed demo determinístico (semana actual, derivado de las supermetas) ----
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function isoDate(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function mondayOf(d){ var x = new Date(d); var wd = (x.getDay()+6)%7; x.setDate(x.getDate()-wd); return x; }
+  function seedDemo(){
+    var mon = mondayOf(new Date()), out = [];
+    var first = SUPERMETAS.filter(function(s){ return !s.anti; })[0] || SUPERMETAS[0];
+    var goal1 = first && first.goals[0];
+    var goal2 = first && first.goals[1];
+    var sup2 = SUPERMETAS.filter(function(s){ return !s.anti && s.id !== (first && first.id); })[0];
+    var goal3 = sup2 && sup2.goals[0];
+    function ev(id, title, dayOff, startMin, minutes, goal, kind, invisible){
+      var d = new Date(mon); d.setDate(d.getDate() + dayOff);
+      return { id: id, title: title, date: isoDate(d), startMin: startMin, minutes: minutes,
+        calendarId: null, supermetaId: null, metaId: goal ? goal.id : null,
+        invisible: !!invisible, inverse: false, kind: kind || "evento", repeatWeeks: 0, until: null };
+    }
+    if(goal1) out.push(ev("d1", "Clase teórica", 0, 9*60, 90, goal1, "evento"));
+    if(goal1) out.push(ev("d2", "Estudio guiado", 1, 15*60, 120, goal1, "tarea"));
+    if(goal2) out.push(ev("d3", "Laboratorio", 2, 11*60, 60, goal2, "evento"));
+    if(goal3) out.push(ev("d4", "Redacción capítulo", 3, 17*60, 90, goal3, "tarea"));
+    out.push(ev("d5", "Gimnasio", 3, 8*60, 60, null, "evento", true)); // evento invisible (§K4)
+    if(goal1) out.push(ev("d6", "Certamen 2", 4, 10*60, 120, goal1, "evento"));
+    return out;
+  }
+  var demoEvents = seedDemo();
+
+  // ---- overrides de arrastre (§B3): persisten fecha/hora movida por ocurrencia ----
   var OVERRIDES_KEY = "productvt-calendario-drag-overrides-v1";
-  function loadOverrides(){ try{ return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; }catch(e){ return {}; } }
-  function saveOverrides(){ try{ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides)); }catch(e){} }
-  var overrides = loadOverrides();
-  var dragJustMoved = false; // evita que el clic posterior al arrastre abra el panel del día
-  function startEventDrag(el, ev, col){
+  var overrides = loadJSON(OVERRIDES_KEY, {});
+  function saveOverrides(){ saveJSON(OVERRIDES_KEY, overrides); }
+  var dragJustMoved = false;
+
+  // ---- ocurrencias: expande tareas/eventos recurrentes (cada 1/2/N semanas hasta "until") ----
+  // La expansión cubre un margen de 120 días alrededor del rango visible para que un
+  // arrastre a otro día (override §B3) siga mostrando la ocurrencia en su día nuevo.
+  function allBaseEvents(){ return userEvents.concat(demoEvents, blocksAsEvents()); }
+  function occurrencesInRange(d0, d1, query){
+    var q = (query || "").toLowerCase();
+    var out = [];
+    var expand0 = new Date(d0.getTime() - 120*864e5);
+    var expand1 = new Date(d1.getTime() + 120*864e5);
+    allBaseEvents().forEach(function(e){
+      if(q && (e.title || "").toLowerCase().indexOf(q) < 0) return;
+      if(!e.repeatWeeks){
+        out.push({ base: e, date: e.date, startMin: e.startMin, minutes: e.minutes });
+        return;
+      }
+      var start = new Date(e.date + "T00:00:00");
+      var until = e.until ? new Date(e.until + "T23:59:59") : expand1;
+      if(until > expand1) until = expand1;
+      var cur = new Date(start);
+      if(cur < expand0){ // adelantar en fase sin perder el ancla semanal
+        var step = 7 * e.repeatWeeks * 864e5;
+        var skip = Math.ceil((expand0.getTime() - cur.getTime()) / step);
+        cur.setDate(cur.getDate() + skip * 7 * e.repeatWeeks);
+      }
+      while(cur <= until){
+        out.push({ base: e, date: isoDate(cur), startMin: e.startMin, minutes: e.minutes });
+        cur.setDate(cur.getDate() + 7 * e.repeatWeeks);
+      }
+    });
+    // overrides de arrastre (§B3): fecha/hora movida por ocurrencia
+    out.forEach(function(o){
+      var ov = overrides[o.base.id + "@" + o.date];
+      if(ov){ o.date = ov.date; o.startMin = ov.startMin; }
+    });
+    // recién ahora se filtra por el rango visible (con override ya aplicado)
+    return out.filter(function(o){
+      return o.date >= isoDate(d0) && o.date <= isoDate(d1) && eventVisible(o.base);
+    }).sort(function(a,b){ return (a.date + pad(a.startMin)).localeCompare(b.date + pad(b.startMin)); });
+  }
+  function eventTitle(o){
+    var e = o.base, t = e.title;
+    if(e.fromBlock) t = "⏱ " + t + (e.status === "expired" ? " (vencido)" : "");
+    return t;
+  }
+
+  // ---- estado de navegación ----
+  var DEFAULT_VIEW = loadJSON(VIEW_KEY, null) || "week";
+  var currentView = DEFAULT_VIEW;
+  var anchor = new Date();          // fecha ancla de la vista
+  var searchQuery = "";
+
+  var WEEKDAYS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  var MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var HOUR_H = 44, START_HOUR = 7, END_HOUR = 23;
+  var viewRoot = document.getElementById("viewRoot");
+  var nowLineTimer = null;
+
+  // ---- barra lateral de calendarios (§K2: crear/eliminar con confirmación) ----
+  function renderCalList(){
+    var box = document.getElementById("calList");
+    var html = "";
+    CALENDARIOS.forEach(function(c){
+      html += '<div class="cal-row">' +
+        '<input type="checkbox" data-calvis="'+c.id+'" '+(isVisible("cal:"+c.id)?"checked":"")+'>' +
+        '<span class="swatch" style="background:'+c.color+'"></span>' +
+        '<span class="lname">'+c.name+'</span>' +
+        '<button class="cdel" data-caldel="'+c.id+'" title="Eliminar calendario">✕</button></div>';
+      supersOfCal(c.id).forEach(function(s){
+        html += '<div class="cal-sub-row"><span class="swatch" style="background:'+s.color+'"></span>'+s.name+(s.anti?" · antimeta":"")+'</div>';
+      });
+    });
+    box.innerHTML = html;
+    box.querySelectorAll("[data-calvis]").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        calVis["cal:" + cb.dataset.calvis] = cb.checked;
+        saveJSON(VIS_KEY, calVis); render();
+      });
+    });
+    box.querySelectorAll("[data-caldel]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var cal = calById(btn.dataset.caldel);
+        if(!cal) return;
+        confirmSheet("¿Eliminar «" + cal.name + "»?", "Las supermetas vinculadas quedan sin calendario (crearán uno propio con su nombre). Los eventos creados aquí también se eliminan.", function(){
+          CALENDARIOS = CALENDARIOS.filter(function(c){ return c.id !== cal.id; });
+          SUPERMETAS.forEach(function(s){ if(s.calendarId === cal.id) s.calendarId = null; });
+          saveJSON(SUPER_KEY, SUPERMETAS);
+          userEvents = userEvents.filter(function(e){ return e.calendarId !== cal.id; });
+          saveUserEvents();
+          saveCalendarios(); renderCalList(); render();
+        });
+      });
+    });
+  }
+  document.getElementById("addCalBtn").addEventListener("click", function(){
+    var nameEl = document.getElementById("newCalName");
+    var name = nameEl.value.trim();
+    if(!name){ nameEl.focus(); return; }
+    CALENDARIOS.push({ id: "cap-" + Date.now(), name: name, color: document.getElementById("newCalColor").value });
+    nameEl.value = "";
+    saveCalendarios(); renderCalList();
+  });
+  var layersPanel = document.getElementById("layersPanel");
+  var backdrop = document.getElementById("backdrop");
+  document.getElementById("openLayers").addEventListener("click", function(){
+    layersPanel.classList.add("open"); backdrop.style.display = "block";
+  });
+  function closeLayers(){ layersPanel.classList.remove("open"); backdrop.style.display = "none"; }
+  document.getElementById("closeLayers").addEventListener("click", closeLayers);
+  backdrop.addEventListener("pointerdown", closeLayers);
+
+  // ---- rango según vista ----
+  function rangeFor(view, a){
+    var d0 = new Date(a), d1 = new Date(a);
+    if(view === "year"){ d0.setMonth(0,1); d1.setMonth(11,31); }
+    else if(view === "month"){ d0.setDate(1); d1 = new Date(d0); d1.setMonth(d1.getMonth()+1); d1.setDate(0); }
+    else if(view === "week"){ d0 = mondayOf(a); d1 = new Date(d0); d1.setDate(d1.getDate()+6); }
+    else if(view === "3day"){ d1 = new Date(a); d1.setDate(d1.getDate()+2); }
+    else { d1 = new Date(a); }
+    d0.setHours(0,0,0,0); d1.setHours(23,59,59,999);
+    return [d0, d1];
+  }
+  function shiftAnchor(dir){
+    if(currentView === "year") anchor.setFullYear(anchor.getFullYear()+dir);
+    else if(currentView === "month") anchor.setMonth(anchor.getMonth()+dir);
+    else if(currentView === "week") anchor.setDate(anchor.getDate()+7*dir);
+    else anchor.setDate(anchor.getDate() + (currentView === "3day" ? 3 : 1) * dir);
+    render();
+  }
+  function periodText(){
+    var r = rangeFor(currentView, anchor);
+    if(currentView === "year") return String(anchor.getFullYear());
+    if(currentView === "month") return MONTHS[anchor.getMonth()] + " " + anchor.getFullYear();
+    if(currentView === "day") return r[0].toLocaleDateString("es", { weekday:"long", day:"numeric", month:"long" });
+    return r[0].toLocaleDateString("es", { day:"numeric", month:"short" }) + " – " + r[1].toLocaleDateString("es", { day:"numeric", month:"short" });
+  }
+
+  // ---- helpers de render de eventos ----
+  function eventChipHtml(o, cls){
+    var e = o.base;
+    var bg = fillColorForEvent(e);
+    var op = e.invisible ? " opacity:.55;" : "";
+    return '<div class="'+cls+'" data-ev="'+e.id+'" data-occ="'+o.date+'" style="background:'+bg+';'+op+'">' +
+      railsHtml(e) +
+      '<span class="t">'+esc(eventTitle(o))+'</span>' +
+      (cls === "tl-event" ? '<span class="h">'+(e.allDay ? "todo el día" : minutesToHHMM(o.startMin)+' · '+o.minutes+' min')+'</span>' : '') +
+      '</div>';
+  }
+  function minutesToHHMM(m){ return pad(Math.floor(m/60)) + ":" + pad(m%60); }
+
+  function startEventDrag(el, ev){
     ev.preventDefault();
+    ev.stopPropagation();
+    var col = el.closest(".tl-day-col");
+    var colBody = el.parentElement;               // contenedor relativo (no el header sticky)
+    var bodyHeight = colBody.getBoundingClientRect().height || ((END_HOUR - START_HOUR) * HOUR_H);
     var startY = ev.clientY, startX = ev.clientX;
-    var origTop = parseFloat(el.style.top) || 0;
+    var origTopPx = el.offsetTop;                 // posición real en px
     var moved = false;
     el.classList.add("dragging");
     function onMove(e2){
-      var dy = e2.clientY - startY;
-      if(Math.abs(dy) > 3 || Math.abs(e2.clientX - startX) > 3) moved = true;
-      var newTop = Math.max(0, origTop + dy);
-      newTop = Math.round(newTop / 11) * 11; // snap 15 min (44 px por hora)
-      el.style.top = newTop + "px";
-      el.dataset.newTop = String(newTop);
-      document.querySelectorAll(".tl-day-col.drag-over").forEach(function(c){ c.classList.remove("drag-over"); });
-      var over = document.elementFromPoint(e2.clientX, e2.clientY);
-      var targetCol = over && over.closest ? over.closest(".tl-day-col") : null;
-      if(targetCol) targetCol.classList.add("drag-over");
-      el.dataset.newDate = targetCol ? targetCol.dataset.date : col.dataset.date;
+      var dy = e2.clientY - startY, dx = e2.clientX - startX;
+      if(Math.abs(dy) > 4 || Math.abs(dx) > 6) moved = true;
+      if(!moved) return;
+      el.style.top = Math.max(0, origTopPx + dy) + "px";
+      updateTip(e2.clientX, e2.clientY); // v3.2 §B3b: hora nueva en tiempo real
+      // detectar columna bajo el puntero (mover entre días)
+      var hit = document.elementFromPoint(e2.clientX, e2.clientY);
+      var colNew = hit ? hit.closest(".tl-day-col") : null;
+      if(colNew && colNew !== col){
+        colNew.lastElementChild.appendChild(el);  // último hijo = contenedor relativo
+        colBody = el.parentElement;
+        col = colNew;
+        bodyHeight = colBody.getBoundingClientRect().height || bodyHeight;
+      }
     }
-    function onUp(){
+    // v3.2 §B3b: tooltip que acompaña el arrastre mostrando la hora (y día) destino
+    var tip = null;
+    function updateTip(cx, cy){
+      if(!tip){ tip = document.createElement("div"); tip.className = "drag-tip"; document.body.appendChild(tip); }
+      var min = START_HOUR*60 + Math.round(el.offsetTop / bodyHeight * (END_HOUR - START_HOUR) * 4) * 15;
+      min = Math.max(0, Math.min(min, END_HOUR*60 - 15));
+      var txt = minutesToHHMM(min);
+      var ds = col.dataset.date;
+      if(ds !== el.dataset.occ){
+        var dd = new Date(ds + "T00:00:00");
+        txt += " · " + WEEKDAYS[(dd.getDay()+6)%7].toLowerCase() + " " + dd.getDate();
+      }
+      tip.textContent = txt;
+      tip.style.left = cx + "px";
+      tip.style.top = (cy - 14) + "px";
+    }
+    function removeTip(){ if(tip){ tip.remove(); tip = null; } }
+    function onUp(e2){
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
       el.classList.remove("dragging");
-      document.querySelectorAll(".tl-day-col.drag-over").forEach(function(c){ c.classList.remove("drag-over"); });
-      if(!moved) return;
-      dragJustMoved = true;
-      setTimeout(function(){ dragJustMoved = false; }, 350);
-      var newTop = Number(el.dataset.newTop || 0);
-      var newStart = Math.round(newTop / 44 * 60); // minutos desde las 07:00
-      var startHour = 7, endHour = 23;
-      newStart = Math.max(0, Math.min((endHour - startHour) * 60 - 15, newStart)) + startHour * 60;
-      var id = el.dataset.id;
-      var dateChanged = el.dataset.newDate && el.dataset.newDate !== col.dataset.date;
-      if(dateChanged){
-        // mover de día: si es un evento del usuario, se reubica; si es demo, se clona como evento del usuario
-        var src = userEvents.filter(function(e){ return e.id === id; })[0];
-        var startMin = overrides[id] !== undefined ? overrides[id] : (src ? src.startMin : null);
-        var fromTime = startMin !== null ? minutesToHHMM(startMin) : "09:00";
-        userEvents.push({
-          id: "u" + Date.now(), date: el.dataset.newDate, title: el.textContent.replace(/ · \d\d:\d\d$/, ""),
-          metaId: src ? src.metaId : null, capaId: src ? src.capaId : null,
-          time: fromTime, startMin: startMin !== null ? startMin : 540
-        });
-        if(src){ userEvents = userEvents.filter(function(e){ return e.id !== id; }); saveUserEvents(); }
-        else { overrides[id] = -1; saveOverrides(); } // -1 = ocultar el demo original
-        render();
-        return;
-      }
-      overrides[id] = newStart;
+      removeTip();
+      if(!moved){ openEventSheet(el.dataset.ev, el.dataset.occ); return; }
+      var dy = e2.clientY - startY;
+      var newTopPx = Math.max(0, origTopPx + dy);
+      var snappedMin = START_HOUR*60 + Math.round(newTopPx / bodyHeight * (END_HOUR - START_HOUR) * 4) * 15; // snap de 15 min
+      var newDate = col.dataset.date;
+      var key = el.dataset.ev + "@" + el.dataset.occ;
+      overrides[key] = { date: newDate, startMin: Math.min(snappedMin, END_HOUR*60 - 15) };
       saveOverrides();
+      dragJustMoved = true;
+      setTimeout(function(){ dragJustMoved = false; }, 250);
       render();
     }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
   }
 
-  function pad(n){ return String(n).padStart(2,"0"); }
-  function iso(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
-  function isoOf(d){ return iso(d.getFullYear(), d.getMonth(), d.getDate()); }
-  function addDays(d,n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
-  function startOfWeek(d){ var day=(d.getDay()+6)%7; return addDays(d,-day); }
-  function minutesToHHMM(totalMin){ var h=Math.floor(totalMin/60), m=totalMin%60; return pad(h)+":"+pad(m); }
+  // ---- timeline: semana / 3 días / día (hoy destacado + línea de ahora §B4) ----
+  function renderTimeline(){
+    var r = rangeFor(currentView, anchor);
+    var days = [];
+    var cur = new Date(r[0]);
+    while(cur <= r[1]){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+    var todayIso = isoDate(new Date());
+    var now = new Date();
+    var nowMin = now.getHours()*60 + now.getMinutes();
+    var visibleMinutes = (END_HOUR - START_HOUR) * 60;
+    function topFor(min){ return (min - START_HOUR*60) / visibleMinutes * 100; } // porcentaje
 
-  var today = new Date();
-
-  // ---- Sesiones/eventos de ejemplo, deterministas por mes (año completo, capa = meta cuando comparte categoría) ----
-  var STATUSES = ["completed","completed","completed","cancelled","expired"];
-  function sessionsForMonth(year, month){
-    var out = [];
-    var daysInMonth = new Date(year, month+1, 0).getDate();
-    for(var d=1; d<=daysInMonth; d++){
-      var seed = (d*7+month) % 10;
-      if(seed < 6){
-        var cat = CATEGORIES[(d+seed) % CATEGORIES.length];
-        var status = STATUSES[(d+seed) % STATUSES.length];
-        var minutes = status === "completed" ? [25,50,75,100][d%4] : [10,15,20][d%3];
-        var startH = 8 + (d % 10);
-        // liga al bloque una meta de esa categoría si existe — prefiere una meta hoja (más específica)
-        // sobre la propia supermeta, simulando "el usuario eligió esta meta al iniciar el bloque"
-        var candidates = METAS.filter(function(m){ return m.categoryId === cat.id; });
-        var linkedMeta = candidates.find(function(m){ return m.parentGoalId; }) || candidates[0];
-        out.push({
-          id: "s"+year+"-"+month+"-"+d+"-1", date: iso(year,month,d), categoryId: cat.id, status: status, minutes: minutes,
-          startMin: startH*60 + (d%2===0?0:30), metaId: linkedMeta ? linkedMeta.id : null, title: linkedMeta ? linkedMeta.name : cat.name
-        });
-      }
-      if(seed === 7){
-        var cat2 = CATEGORIES[(d+2) % CATEGORIES.length];
-        var candidates2 = METAS.filter(function(m){ return m.categoryId === cat2.id; });
-        var linkedMeta2 = candidates2.find(function(m){ return m.parentGoalId; }) || candidates2[0];
-        out.push({
-          id: "s"+year+"-"+month+"-"+d+"-2", date: iso(year,month,d), categoryId: cat2.id, status: "completed", minutes: 25,
-          startMin: (15+(d%4))*60, metaId: linkedMeta2 ? linkedMeta2.id : null, title: linkedMeta2 ? linkedMeta2.name : cat2.name
-        });
-      }
-    }
-    return out;
-  }
-  var demoCache = {};
-  function demoForMonth(year, month){
-    var key = year+"-"+month;
-    if(!demoCache[key]) demoCache[key] = sessionsForMonth(year, month);
-    return demoCache[key];
-  }
-  function eventsForRange(fromDate, toDate){
-    var out = [];
-    var cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-    var endMonth = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
-    while(cursor <= endMonth){
-      out = out.concat(demoForMonth(cursor.getFullYear(), cursor.getMonth()));
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
-    }
-    var fromIso = isoOf(fromDate), toIso = isoOf(toDate);
-    var sessions = out.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
-    var custom = userEvents.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
-    return sessions.concat(custom).filter(function(e){
-      if(overrides[e.id] === -1) return false; // v3 §B3: evento demo reubicado como copia de usuario
-      if(e.metaId) return isVisible(layerIdForMeta(e.metaId));
-      if(e.capaId) return isVisible("capa:"+e.capaId);
-      return true;
-    });
-  }
-  function colorForEvent(e){
-    if(e.metaId){ var c = fillColorForMeta(e.metaId); if(c) return c; }
-    if(e.capaId){ var cp = capaById(e.capaId); if(cp) return cp.color; }
-    return catById(e.categoryId).color;
-  }
-  function stripeForEvent(e){
-    return e.metaId ? stripeColorForMeta(e.metaId) : null;
-  }
-  function capaAccentForEvent(e){
-    if(e.metaId) return capaColorForMeta(e.metaId);
-    return null; // un evento tageado directo a una capa ya usa esa capa como su color principal
-  }
-  function labelForEvent(e){ return e.title || (e.categoryId ? catById(e.categoryId).name : "Evento"); }
-
-  // ---- estado de la vista ----
-  var DEFAULT_VIEW_KEY = "productvt-calendario-vista-default-v1";
-  function loadDefaultView(){ try{ return localStorage.getItem(DEFAULT_VIEW_KEY) || "month"; }catch(e){ return "month"; } }
-  var view = loadDefaultView();
-  var cursorDate = new Date();
-  var searchQuery = "";
-  function matchesSearch(e){
-    if(!searchQuery) return false;
-    return labelForEvent(e).toLowerCase().indexOf(searchQuery) !== -1;
-  }
-  function dayHasMatch(dateStr){
-    if(!searchQuery) return false;
-    return eventsForRange(new Date(dateStr+"T00:00:00"), new Date(dateStr+"T00:00:00")).some(matchesSearch);
-  }
-
-  var viewRoot = document.getElementById("viewRoot");
-  var periodLabel = document.getElementById("periodLabel");
-  var layersPanel = document.getElementById("layersPanel");
-  var backdrop = document.getElementById("backdrop");
-  var MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var WEEKDAYS = ["L","M","M","J","V","S","D"];
-
-  function setView(v){
-    view = v;
-    document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.view===v); });
-    document.getElementById("pinDefaultBtn").classList.toggle("is-default", loadDefaultView() === v);
-    render();
-  }
-
-  function renderLayers(){
-    var list = document.getElementById("layerList");
-    list.innerHTML = "";
-    var sinCapa = supermetas().filter(function(m){ return !m.capaId; });
-
-    CAPAS.forEach(function(cp){
-      var key = "capa:"+cp.id;
-      var head = document.createElement("div");
-      head.className = "layer-row layer-group-header";
-      head.innerHTML = '<input type="checkbox" '+(isVisible(key)?"checked":"")+'><span class="swatch" style="background:'+cp.color+'"></span>' +
-        '<span class="lname">'+cp.name+'</span><button class="ldel" title="Borrar capa">×</button>';
-      head.querySelector('input').addEventListener("change", function(e){ layerVis[key] = e.target.checked; saveVis(); render(); });
-      head.querySelector('.ldel').addEventListener("click", function(){
-        if(!confirm('¿Borrar la capa "'+cp.name+'"? Las supermetas asignadas quedan sin capa.')) return;
-        METAS.forEach(function(m){ if(m.capaId === cp.id) delete m.capaId; });
-        saveMetas();
-        CAPAS = CAPAS.filter(function(c){ return c.id !== cp.id; });
-        saveCapas(); renderLayers(); render();
-      });
-      list.appendChild(head);
-
-      supermetas().filter(function(m){ return m.capaId === cp.id; }).forEach(function(m){
-        var sub = document.createElement("div");
-        sub.className = "layer-row layer-sub-row";
-        sub.innerHTML = '<span class="swatch" style="background:'+(m.color||catById(m.categoryId).color)+'"></span>' +
-          '<span class="lname">'+m.name+'</span><button class="ldel" title="Quitar de esta capa">quitar</button>';
-        sub.querySelector('.ldel').addEventListener("click", function(){
-          delete m.capaId; saveMetas(); renderLayers(); render();
-        });
-        list.appendChild(sub);
-      });
-    });
-
-    if(sinCapa.length){
-      var hr = document.createElement("p");
-      hr.className = "note"; hr.style.margin = "6px 0 0"; hr.textContent = "Sin capa";
-      list.appendChild(hr);
-      sinCapa.forEach(function(m){
-        var key = "meta:"+m.id;
-        var row = document.createElement("div");
-        row.className = "layer-row";
-        row.innerHTML = '<input type="checkbox" '+(isVisible(key)?"checked":"")+'><span class="swatch" style="background:'+(m.color||catById(m.categoryId).color)+'"></span>' +
-          '<span class="lname">'+m.name+'</span>' +
-          '<select class="assign-select">' + '<option value="">a capa…</option>' + CAPAS.map(function(c){ return '<option value="'+c.id+'">'+c.name+'</option>'; }).join("") + '</select>';
-        row.querySelector('input').addEventListener("change", function(e){ layerVis[key] = e.target.checked; saveVis(); render(); });
-        row.querySelector('.assign-select').addEventListener("change", function(e){
-          if(!e.target.value) return;
-          m.capaId = e.target.value; saveMetas(); renderLayers(); render();
-        });
-        list.appendChild(row);
-      });
-    }
-  }
-
-  function render(){
-    if(view === "year") renderYear();
-    else if(view === "month") renderMonth();
-    else if(view === "week") renderTimeline(7);
-    else if(view === "3day") renderTimeline(3);
-    else renderTimeline(1);
-  }
-
-  function renderYear(){
-    var y = cursorDate.getFullYear();
-    periodLabel.textContent = y;
-    var html = '<div class="year-grid">';
-    for(var m=0; m<12; m++){
-      var evts = eventsForRange(new Date(y,m,1), new Date(y,m+1,0));
-      var byDate = {}; evts.forEach(function(e){ byDate[e.date]=true; });
-      var first = new Date(y,m,1); var offset=(first.getDay()+6)%7;
-      var days = new Date(y,m+1,0).getDate();
-      html += '<div class="mini-month" data-month="'+m+'"><h3>'+MONTHS[m]+'</h3><div class="mini-grid">';
-      for(var i=0;i<offset;i++) html += '<span class="mini-day other"></span>';
-      for(var d=1; d<=days; d++){
-        var ds = iso(y,m,d);
-        var isToday = ds === isoOf(today);
-        html += '<span class="mini-day'+(byDate[ds]?" has-events":"")+(isToday?" today":"")+(dayHasMatch(ds)?" search-hit":"")+'" data-date="'+ds+'">'+d+'</span>';
-      }
-      html += '</div></div>';
-    }
-    html += '</div>';
-    viewRoot.innerHTML = html;
-    document.querySelectorAll(".mini-month").forEach(function(el){
-      el.addEventListener("click", function(ev){
-        var dateEl = ev.target.closest(".mini-day[data-date]");
-        cursorDate = new Date(y, Number(el.dataset.month), dateEl ? Number(dateEl.dataset.date.slice(-2)) : 1);
-        setView(dateEl ? "day" : "month");
-      });
-    });
-  }
-
-  function renderMonth(){
-    var y = cursorDate.getFullYear(), m = cursorDate.getMonth();
-    periodLabel.textContent = MONTHS[m] + " " + y;
-    var first = new Date(y,m,1); var offset=(first.getDay()+6)%7;
-    var daysInMonth = new Date(y,m+1,0).getDate();
-    var daysInPrev = new Date(y,m,0).getDate();
-    var cells = [];
-    for(var i=offset; i>0; i--) cells.push({ day: daysInPrev-i+1, other: true, y: m===0?y-1:y, m: m===0?11:m-1 });
-    for(var d=1; d<=daysInMonth; d++) cells.push({ day: d, other: false, y:y, m:m });
-    while(cells.length % 7 !== 0){ var idx = cells.length-(offset+daysInMonth); cells.push({ day: idx+1, other: true, y: m===11?y+1:y, m: m===11?0:m+1 }); }
-    var html = '<div class="weekday-row">'+WEEKDAYS.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div><div class="month-grid">';
-    cells.forEach(function(c){
-      var ds = iso(c.y,c.m,c.day);
-      var isToday = ds === isoOf(today);
-      var evts = eventsForRange(new Date(ds), new Date(ds));
-      var shown = evts.slice(0,3);
-      html += '<div class="month-day'+(c.other?" other-month":"")+(isToday?" today":"")+(evts.length?" has-events":"")+(dayHasMatch(ds)?" search-hit":"")+'" data-date="'+ds+'">' +
-        '<span class="num">'+c.day+'</span>' +
-        shown.map(function(e){
-          var stripe = stripeForEvent(e);
-          var st = "background:"+colorForEvent(e) + (stripe ? ";border-left:3px solid "+stripe+";padding-left:3px" : "");
-          var capaColor = capaAccentForEvent(e);
-          var accent = capaColor ? ' <i style="display:inline-block;width:5px;height:5px;border-radius:50%;background:'+capaColor+';vertical-align:middle"></i>' : '';
-          return '<span class="evt" style="'+st+'">'+labelForEvent(e)+accent+'</span>';
-        }).join("") +
-        (evts.length>3 ? '<span class="more">+'+(evts.length-3)+' más</span>' : "") +
-        '</div>';
-    });
-    html += '</div>';
-    viewRoot.innerHTML = html;
-    document.querySelectorAll(".month-day").forEach(function(el){
-      el.addEventListener("click", function(){ openDaySheet(el.dataset.date); });
-    });
-  }
-
-  function renderTimeline(numDays){
-    var start = numDays === 7 ? startOfWeek(cursorDate) : (numDays===3 ? addDays(cursorDate,-1) : cursorDate);
-    var days = []; for(var i=0;i<numDays;i++) days.push(addDays(start,i));
-    periodLabel.textContent = numDays===1
-      ? days[0].toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})
-      : days[0].getDate()+" "+MONTHS[days[0].getMonth()].slice(0,3)+" – "+days[numDays-1].getDate()+" "+MONTHS[days[numDays-1].getMonth()].slice(0,3);
-
-    var startHour = 7, endHour = 23;
     var hourLabels = "";
-    for(var h=startHour; h<=endHour; h++) hourLabels += '<div class="tl-hour-label">'+pad(h)+":00</div>";
-
+    for(var h = START_HOUR; h <= END_HOUR; h++){
+      hourLabels += '<div class="tl-hour-label" style="height:'+HOUR_H+'px">'+pad(h)+':00</div>';
+    }
     var colsHtml = "";
     days.forEach(function(d){
-      var ds = isoOf(d);
-      var evts = eventsForRange(d,d).filter(function(e){ return e.startMin !== undefined || e.time; });
-      var isToday = ds === isoOf(today);
-      var slots = ""; for(var h=startHour; h<=endHour; h++) slots += '<div class="tl-slot" data-hour="'+h+'"></div>';
-      var eventsHtml = evts.map(function(e){
-        var startMin = overrides[e.id] !== undefined ? overrides[e.id] : (e.startMin !== undefined ? e.startMin : (e.time ? Number(e.time.split(":")[0])*60+Number(e.time.split(":")[1]) : startHour*60));
-        var dur = e.minutes || 25;
-        var top = (startMin - startHour*60) / 60 * 44;
-        var height = Math.max(20, dur/60*44);
-        var stripe2 = stripeForEvent(e);
-        var evStyle = "top:"+top+"px;height:"+height+"px;background:"+colorForEvent(e) + (stripe2 ? ";border-left:4px solid "+stripe2 : "");
-        var capaColor2 = capaAccentForEvent(e);
-        var accent2 = capaColor2 ? '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:'+capaColor2+'"></span>' : '';
-        return '<div class="tl-event'+(matchesSearch(e)?" search-hit":"")+'" data-id="'+e.id+'" style="'+evStyle+'" title="'+labelForEvent(e)+'">'+labelForEvent(e)+' · '+minutesToHHMM(startMin)+accent2+'</div>';
+      var ds = isoDate(d);
+      var isToday = ds === todayIso;
+      var occs = occurrencesInRange(d, d, searchQuery);
+      var slots = "";
+      for(var h = START_HOUR; h < END_HOUR; h++) slots += '<div class="tl-slot" style="height:'+HOUR_H+'px"></div>';
+      var eventsHtml = occs.map(function(o){
+        if(o.date !== ds) return "";
+        var top = o.base.allDay ? 0 : topFor(o.startMin); // v3.2: todo el día va arriba del todo
+        if(top < 0) return "";
+        var heightPct = o.base.allDay ? 2.2 : Math.max(2.2, o.minutes / visibleMinutes * 100);
+        var chip = eventChipHtml(o, "tl-event");
+        return chip.replace('style="background', 'style="top:'+top+'%;height:'+heightPct+'%;background');
       }).join("");
       var nowLine = "";
-      if(isToday){
-        var nowMin = today.getHours()*60 + today.getMinutes();
-        if(nowMin >= startHour*60 && nowMin <= endHour*60){
-          var nowTop = (nowMin - startHour*60) / 60 * 44;
-          nowLine = '<div class="tl-now" id="tlNow" style="top:'+nowTop+'px"></div>';
-        }
+      if(isToday && nowMin > START_HOUR*60 && nowMin < END_HOUR*60){
+        nowLine = '<div class="tl-now" style="top:'+topFor(nowMin)+'%"></div>';
       }
       colsHtml += '<div class="tl-day-col" data-date="'+ds+'">' +
         '<div class="tl-day-head'+(isToday?" today":"")+'">'+WEEKDAYS[(d.getDay()+6)%7]+' '+d.getDate()+(isToday?' <span class="hoy">HOY</span>':'')+'</div>' +
-        '<div style="position:relative">'+slots+eventsHtml+nowLine+'</div></div>';
+        '<div style="position:relative;min-height:'+((END_HOUR-START_HOUR)*HOUR_H)+'px">'+slots+eventsHtml+nowLine+'</div></div>';
     });
+    viewRoot.innerHTML = '<div class="timeline"><div class="tl-hours"><div class="tl-hour-label" style="height:27px"></div>'+hourLabels+'</div>' +
+      '<div class="tl-days" style="grid-template-columns:repeat('+days.length+',1fr)">' + colsHtml + '</div></div>';
 
-    viewRoot.innerHTML = '<div class="timeline"><div class="tl-hours"><div class="tl-hour-label" style="height:26px"></div>'+hourLabels+'</div>' +
-      '<div class="tl-days" style="grid-template-columns:repeat('+numDays+',1fr)">' + colsHtml + '</div></div>';
-
-    // v3 §B3: presionar y arrastrar mueve el evento (hora con snap de 15 min, incluso entre días)
     viewRoot.querySelectorAll(".tl-event").forEach(function(el){
-      el.addEventListener("pointerdown", function(ev){
-        var col = el.closest(".tl-day-col");
-        startEventDrag(el, ev, col);
-      });
+      el.addEventListener("pointerdown", function(ev){ startEventDrag(el, ev); });
     });
     viewRoot.querySelectorAll(".tl-day-col").forEach(function(col){
       col.addEventListener("click", function(ev){
         if(dragJustMoved) return;
         if(ev.target.closest(".tl-event")) return;
-        openDaySheet(col.dataset.date);
+        // clic en vacío: crear evento a esa hora (redondeo a 15 min)
+        var rect = col.getBoundingClientRect();
+        var y = ev.clientY - rect.top - 27; // alto del header sticky
+        var min = START_HOUR*60 + Math.max(0, Math.round(y / HOUR_H * 4) * 15);
+        openCreateSheet({ date: col.dataset.date, startMin: Math.min(min, 22*60) });
+      });
+    });
+    refreshNowLine();
+  }
+  function refreshNowLine(){
+    if(nowLineTimer) clearInterval(nowLineTimer);
+    nowLineTimer = setInterval(function(){
+      if(currentView !== "week" && currentView !== "3day" && currentView !== "day") return;
+      var line = viewRoot.querySelector(".tl-now");
+      if(!line) return;
+      var now = new Date(), nowMin = now.getHours()*60 + now.getMinutes();
+      var top = (nowMin - START_HOUR*60) / ((END_HOUR - START_HOUR) * 60) * 100;
+      line.style.top = top + "%";
+    }, 30000);
+  }
+
+  // ---- vista mes ----
+  function renderMonth(){
+    var first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    var start = mondayOf(first);
+    var todayIso = isoDate(new Date());
+    var monthEnd = new Date(anchor.getFullYear(), anchor.getMonth()+1, 0);
+    var cells = "";
+    var d = new Date(start);
+    var heads = WEEKDAYS.map(function(w){ return '<div class="month-head">'+w+'</div>'; }).join("");
+    for(var i = 0; i < 42; i++){
+      var ds = isoDate(d);
+      var inMonth = d.getMonth() === anchor.getMonth();
+      var occs = occurrencesInRange(d, d, searchQuery).filter(function(o){ return o.date === ds; });
+      var evs = occs.slice(0, 4).map(function(o){ return eventChipHtml(o, "m-event"); }).join("");
+      var more = occs.length > 4 ? '<div style="font-size:9px;color:var(--muted)">+'+(occs.length-4)+' más</div>' : "";
+      cells += '<div class="month-cell'+(inMonth?"":" other")+(ds===todayIso?" today":"")+'" data-date="'+ds+'">' +
+        '<span class="dnum">'+d.getDate()+'</span>'+evs+more+'</div>';
+      d.setDate(d.getDate()+1);
+    }
+    viewRoot.innerHTML = '<div class="month-grid">'+heads+cells+'</div>';
+    viewRoot.querySelectorAll(".month-cell").forEach(function(cell){
+      cell.addEventListener("click", function(ev){
+        if(ev.target.closest(".m-event")) return;
+        openCreateSheet({ date: cell.dataset.date, startMin: 9*60 });
+      });
+    });
+    viewRoot.querySelectorAll(".m-event").forEach(function(el){
+      el.addEventListener("click", function(ev){
+        ev.stopPropagation();
+        openEventSheet(el.dataset.ev, el.dataset.occ);
       });
     });
   }
 
-  function openDaySheet(dateStr){
-    var d = new Date(dateStr+"T00:00:00");
-    var evts = eventsForRange(d,d);
-    var itemsHtml = evts.length ? evts.map(function(e){
-      var stripe = stripeForEvent(e);
-      var shownStart = overrides[e.id] !== undefined ? overrides[e.id] : e.startMin;
-      var dotStyle = "background:"+colorForEvent(e) + (stripe ? ";box-shadow:0 0 0 2px "+stripe : "");
-      return '<div class="item"><span class="idot" style="'+dotStyle+'"></span>' +
-        '<span class="itxt">'+labelForEvent(e)+(e.minutes?" · "+e.minutes+" min":"")+'</span>' +
-        '<span class="itime">'+(shownStart!==undefined?minutesToHHMM(shownStart):(e.time||""))+'</span></div>';
-    }).join("") : '<p class="empty">Nada este día.</p>';
-    var metaOptions = METAS.map(function(m){ return '<option value="meta:'+m.id+'">'+(m.parentGoalId?"— ":"")+m.name+'</option>'; }).join("");
-    var capaOptions = CAPAS.map(function(l){ return '<option value="capa:'+l.id+'">'+l.name+' (capa)</option>'; }).join("");
+  // ---- vista año ----
+  function renderYear(){
+    var todayIso = isoDate(new Date());
+    var html = '<div class="year-grid">';
+    for(var m = 0; m < 12; m++){
+      var first = new Date(anchor.getFullYear(), m, 1);
+      var daysIn = new Date(anchor.getFullYear(), m+1, 0).getDate();
+      var lead = (first.getDay()+6)%7;
+      var cells = "";
+      for(var i = 0; i < lead; i++) cells += '<span class="ym-cell"></span>';
+      var r0 = new Date(anchor.getFullYear(), m, 1, 0,0,0,0);
+      var r1 = new Date(anchor.getFullYear(), m, daysIn, 23,59,59,999);
+      var occs = occurrencesInRange(r0, r1, searchQuery);
+      var daySet = {};
+      occs.forEach(function(o){ daySet[o.date] = true; });
+      for(var dd = 1; dd <= daysIn; dd++){
+        var ds = anchor.getFullYear()+"-"+pad(m+1)+"-"+pad(dd);
+        cells += '<span class="ym-cell'+(daySet[ds]?" has-ev":"")+(ds===todayIso?" today":"")+'">'+dd+'</span>';
+      }
+      html += '<div class="year-month" data-month="'+m+'"><h4>'+MONTHS[m]+'</h4><div class="ym-grid">'+cells+'</div></div>';
+    }
+    viewRoot.innerHTML = html + '</div>';
+    viewRoot.querySelectorAll(".year-month").forEach(function(box){
+      box.addEventListener("click", function(){
+        anchor.setMonth(parseInt(box.dataset.month, 10), 1);
+        currentView = "month";
+        updateSwitch(); render();
+      });
+    });
+  }
+
+  // ---- overlays (§B2: presionar fuera cierra) ----
+  function mountSheet(html){
     var wrap = document.createElement("div");
     wrap.className = "overlay";
-    wrap.innerHTML = '<div class="sheet">' +
-      '<button class="close" id="closeDay">cerrar</button>' +
-      '<h2>'+d.toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})+'</h2>' +
-      itemsHtml +
-      '<div class="field"><label>Nuevo evento</label><input type="text" id="evTitle" placeholder="Título"></div>' +
-      '<div class="row2"><div class="field"><label>Meta o capa</label><select id="evMeta"><option value="">Sin meta/capa</option>' +
-      (metaOptions ? '<optgroup label="Metas">'+metaOptions+'</optgroup>' : '') +
-      (capaOptions ? '<optgroup label="Capas">'+capaOptions+'</optgroup>' : '') + '</select></div>' +
-      '<div class="field"><label>Hora</label><input type="time" id="evTime" value="09:00"></div></div>' +
-      '<button class="btn" id="addEvBtn">+ Agregar</button>' +
-      '</div>';
+    wrap.innerHTML = '<div class="sheet">' + html + '</div>';
     document.getElementById("sheetRoot").appendChild(wrap);
-    wrap.addEventListener("pointerdown", function(ev){ if(ev.target === wrap) wrap.remove(); }); // v3 §B2: presionar fuera cierra
-    wrap.querySelector("#closeDay").addEventListener("click", function(){ wrap.remove(); });
-    wrap.querySelector("#addEvBtn").addEventListener("click", function(){
-      var title = wrap.querySelector("#evTitle").value.trim();
-      if(!title) return;
-      var time = wrap.querySelector("#evTime").value;
-      var sel = wrap.querySelector("#evMeta").value;
+    wrap.addEventListener("pointerdown", function(ev){ if(ev.target === wrap) wrap.remove(); });
+    return wrap;
+  }
+  function confirmSheet(title, text, onOk){
+    var wrap = mountSheet(
+      '<h2>'+title+'</h2><p class="empty">'+text+'</p>' +
+      '<div class="row2"><button class="btn ghost" data-x="no">Cancelar</button>' +
+      '<button class="btn danger" data-x="ok">Eliminar</button></div>');
+    wrap.querySelector('[data-x="no"]').addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector('[data-x="ok"]').addEventListener("click", function(){ wrap.remove(); onOk(); });
+  }
+
+  // ---- panel de creación estilo Google Calendar (§K4/§K6) ----
+  function openCreateSheet(pre){
+    var pre_ = pre || {};
+    var dateVal = pre_.date || isoDate(new Date());
+    var startVal = minutesToHHMM(pre_.startMin || 9*60);
+    var wrap = mountSheet(
+      '<h2>Nuevo en el calendario</h2>' +
+      '<div class="field"><label>Título</label><input type="text" id="nTitle" placeholder="Ej: Estudio guía 3"></div>' +
+      '<div class="kind-toggle">' +
+        '<button type="button" id="nKindEvento" aria-pressed="true">Evento puntual</button>' +
+        '<button type="button" id="nKindTarea" aria-pressed="false">Tarea recurrente</button>' +
+      '</div>' +
+      '<label class="inv-check"><input type="checkbox" id="nInvisible"> Evento invisible <small>(solo calendario, sin metas)</small></label>' +
+      '<div id="nAssoc">' +
+        '<div class="field"><label>Supermeta</label><select id="nSuper"></select></div>' +
+        '<div class="field"><label>Meta</label><select id="nGoal"></select></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div class="field"><label>Calendario</label><select id="nCal"></select></div>' +
+        '<div class="field"><label>Color (opcional)</label><input type="color" id="nColor" value="#3A6B54"></div>' +
+      '</div>' +
+      '<label class="inv-check"><input type="checkbox" id="nAllDay"> Todo el día</label>' +
+      '<div class="row2">' +
+        '<div class="field"><label>Fecha</label><input type="date" id="nDate" value="'+dateVal+'"></div>' +
+        '<span></span>' +
+      '</div>' +
+      '<div class="row2" id="nTimeRow">' +
+        '<div class="field"><label>Inicio</label><input type="time" id="nStart" value="'+startVal+'"></div>' +
+        '<div class="field"><label>Duración (min)</label><input type="number" id="nMins" value="60" min="5" step="5"></div>' +
+      '</div>' +
+      '<div id="nRepeatBox" style="display:none">' +
+        '<div class="row2">' +
+          '<div class="field"><label>Repetir cada</label><select id="nRepeat"><option value="1">1 semana</option><option value="2">2 semanas</option><option value="0">N semanas…</option></select></div>' +
+          '<div class="field"><label>Hasta (término)</label><input type="date" id="nUntil"></div>' +
+        '</div>' +
+        '<div class="field" id="nNBox" style="display:none"><label>N (semanas)</label><input type="number" id="nN" value="3" min="1" max="12"></div>' +
+      '</div>' +
+      '<div class="hintbox">Relleno del cuadro: color de la <b>meta</b>; rallitas al costado: <b>calendario</b> y <b>supermeta</b> (§K3). Si la supermeta no está vinculada a un calendario, se crea uno propio con su nombre y color (§D3).</div>' +
+      '<div class="row2"><button class="btn ghost" id="nCancel">Cancelar</button><button class="btn" id="nSave">Guardar</button></div>'
+    );
+    wireCreateSheet(wrap);
+  }
+
+  function wireCreateSheet(wrap){
+    var nSuper = wrap.querySelector("#nSuper"), nGoal = wrap.querySelector("#nGoal");
+    var nCal = wrap.querySelector("#nCal"), nColor = wrap.querySelector("#nColor");
+    var colorDirty = false; // solo se guarda el color si la persona lo cambió (si no, manda el derivado)
+    nColor.addEventListener("input", function(){ colorDirty = true; });
+    function fillCals(){
+      nCal.innerHTML = '<option value="">— automático (según supermeta) —</option>' + CALENDARIOS.map(function(c){
+        return '<option value="'+c.id+'">'+esc(c.name)+'</option>';
+      }).join("");
+    }
+    function derivedColor(){
+      var s = superById(nSuper.value);
+      if(s){ var g = s.goals.filter(function(x){ return x.id === nGoal.value; })[0]; if(g && g.color) return g.color; if(s.color) return s.color; }
+      var c = nCal.value ? calById(nCal.value) : null;
+      if(c) return c.color;
+      return "#6E7368";
+    }
+    function refreshColor(){
+      if(!colorDirty) nColor.value = derivedColor();
+    }
+    function fillSupers(){
+      nSuper.innerHTML = '<option value="">— sin asociación —</option>' + SUPERMETAS.filter(function(s){ return !s.anti; }).map(function(s){
+        return '<option value="'+s.id+'">'+esc(s.name)+'</option>';
+      }).join("");
+      fillGoals();
+    }
+    function fillGoals(){
+      var s = superById(nSuper.value);
+      nGoal.disabled = !s;
+      nGoal.innerHTML = s && s.goals.length
+        ? s.goals.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join("")
+        : '<option value="">—</option>';
+      refreshColor();
+    }
+    nSuper.addEventListener("change", fillGoals);
+    nCal.addEventListener("change", refreshColor);
+    fillCals();
+    fillSupers();
+    var kind = "evento";
+    function setKind(k){
+      kind = k;
+      wrap.querySelector("#nKindEvento").setAttribute("aria-pressed", String(k === "evento"));
+      wrap.querySelector("#nKindTarea").setAttribute("aria-pressed", String(k === "tarea"));
+      wrap.querySelector("#nRepeatBox").style.display = k === "tarea" ? "block" : "none";
+    }
+    wrap.querySelector("#nKindEvento").addEventListener("click", function(){ setKind("evento"); });
+    wrap.querySelector("#nKindTarea").addEventListener("click", function(){ setKind("tarea"); });
+    wrap.querySelector("#nInvisible").addEventListener("change", function(){
+      var inv = wrap.querySelector("#nInvisible").checked;
+      wrap.querySelector("#nAssoc").style.display = inv ? "none" : "block"; // §K4: desactiva la asociación (mantiene calendario/horario/repetición)
+      refreshColor();
+    });
+    wrap.querySelector("#nAllDay").addEventListener("change", function(){
+      var allDay = wrap.querySelector("#nAllDay").checked;
+      wrap.querySelector("#nTimeRow").style.display = allDay ? "none" : "grid"; // v3.2: todo el día
+    });
+    wrap.querySelector("#nRepeat").addEventListener("change", function(){
+      wrap.querySelector("#nNBox").style.display = wrap.querySelector("#nRepeat").value === "0" ? "block" : "none";
+    });
+    wrap.querySelector("#nCancel").addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#nSave").addEventListener("click", function(){
+      var title = wrap.querySelector("#nTitle").value.trim();
+      if(!title){ wrap.querySelector("#nTitle").focus(); return; }
+      var invisible = wrap.querySelector("#nInvisible").checked;
+      var allDay = wrap.querySelector("#nAllDay").checked;
+      var supId = invisible ? null : (nSuper.value || null);
+      var goalId = supId ? (nGoal.value || null) : null;
+      var repeatSel = wrap.querySelector("#nRepeat").value;
+      var repeatWeeks = kind === "tarea" ? (repeatSel === "0" ? Math.max(1, parseInt(wrap.querySelector("#nN").value, 10) || 1) : parseInt(repeatSel, 10)) : 0;
+      var sMin = wrap.querySelector("#nStart").value.split(":");
       userEvents.push({
-        id: "u"+Date.now(), date: dateStr, title: title,
-        metaId: sel.indexOf("meta:")===0 ? sel.slice(5) : null,
-        capaId: sel.indexOf("capa:")===0 ? sel.slice(5) : null,
-        time: time, startMin: Number(time.split(":")[0])*60+Number(time.split(":")[1])
+        id: "u" + Date.now(), title: title,
+        date: wrap.querySelector("#nDate").value || isoDate(new Date()),
+        allDay: allDay,
+        startMin: allDay ? 0 : (parseInt(sMin[0],10)||9)*60 + (parseInt(sMin[1],10)||0),
+        minutes: allDay ? 1440 : Math.max(5, parseInt(wrap.querySelector("#nMins").value, 10) || 60),
+        calendarId: nCal.value || null,
+        color: colorDirty ? nColor.value : null, // sin color elegido, manda el color derivado (§K3)
+        supermetaId: supId, metaId: goalId,
+        invisible: invisible, inverse: false, kind: kind,
+        repeatWeeks: repeatWeeks,
+        until: repeatWeeks ? (wrap.querySelector("#nUntil").value || null) : null
       });
-      saveUserEvents(); wrap.remove(); render(); openDaySheet(dateStr);
+      saveUserEvents();
+      wrap.remove();
+      render();
+    });
+    setKind("evento");
+  }
+
+  // ---- detalle del evento ----
+  // v3.2: los eventos del usuario abren un editor completo (calendario, color, invisible,
+  // supermeta/meta, repetición, todo el día — §K4/§K6); demo y bloques del cronómetro
+  // abren un editor simple (reposición por override).
+  function openEventSheet(evId, occDate){
+    var base = null;
+    allBaseEvents().forEach(function(e){ if(e.id === evId) base = e; });
+    if(!base) return;
+    if(userEvents.indexOf(base) >= 0){ openEventEditor(base); return; }
+
+    // ---- editor simple (demo / bloques ⏱ del cronómetro) ----
+    var goal = eventGoal(base);
+    var info = [];
+    if(goal) info.push("Supermeta: " + goal.sup.name + " · Meta: " + goal.goal.name);
+    if(base.kind === "tarea") info.push("Tarea" + (base.repeatWeeks ? " que se repite cada " + base.repeatWeeks + " semana(s)" : " recurrente"));
+    if(base.invisible) info.push("Evento invisible: solo vive en el calendario (§K4)");
+    if(base.fromBlock) info.push("Bloque terminado del cronómetro (§D1)");
+    var wrap = mountSheet(
+      '<button class="close" data-x="close">cerrar ✕</button>' +
+      '<h2>'+esc(base.title)+'</h2>' +
+      '<p class="empty">'+occDate+' · '+minutesToHHMM(base.startMin)+' · '+base.minutes+' min</p>' +
+      (info.length ? '<div class="hintbox">'+info.join("<br>")+'</div>' : '') +
+      '<div class="field"><label>Título</label><input type="text" id="eTitle" value="'+esc(base.title)+'"></div>' +
+      '<div class="row2">' +
+        '<div class="field"><label>Inicio</label><input type="time" id="eStart" value="'+minutesToHHMM(base.startMin)+'"></div>' +
+        '<div class="field"><label>Duración (min)</label><input type="number" id="eMins" value="'+base.minutes+'" min="5" step="5"></div>' +
+      '</div>' +
+      '<div class="row2"><button class="btn ghost" id="eDelete">Eliminar</button><button class="btn" id="eSave">Guardar</button></div>'
+    );
+    wrap.querySelector('[data-x="close"]').addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#eSave").addEventListener("click", function(){
+      var t = wrap.querySelector("#eTitle").value.trim();
+      if(!t) return;
+      var sMin = wrap.querySelector("#eStart").value.split(":");
+      var m = Math.max(5, parseInt(wrap.querySelector("#eMins").value, 10) || 60);
+      var start = (parseInt(sMin[0],10)||0)*60 + (parseInt(sMin[1],10)||0);
+      if(!base.fromBlock){
+        base.title = t; base.startMin = start; base.minutes = m;
+        saveUserEvents();
+      } else {
+        overrides[base.id + "@" + occDate] = { date: occDate, startMin: start }; // bloques: solo reposición
+        saveOverrides();
+      }
+      wrap.remove(); render();
+    });
+    wrap.querySelector("#eDelete").addEventListener("click", function(){
+      wrap.remove();
+      if(base.fromBlock){
+        cronoBlocks = cronoBlocks.filter(function(b){ return b.id !== base.id; });
+        saveJSON(BLOCKS_KEY, cronoBlocks);
+        delete overrides[base.id + "@" + occDate]; saveOverrides();
+      } else if(userEvents.indexOf(base) >= 0){
+        userEvents = userEvents.filter(function(e){ return e !== base; });
+        saveUserEvents();
+      }
+      render();
     });
   }
 
-  // ---- navegación ----
-  function step(dir){
-    if(view==="year") cursorDate = new Date(cursorDate.getFullYear()+dir, cursorDate.getMonth(), 1);
-    else if(view==="month") cursorDate = new Date(cursorDate.getFullYear(), cursorDate.getMonth()+dir, 1);
-    else if(view==="week") cursorDate = addDays(cursorDate, dir*7);
-    else if(view==="3day") cursorDate = addDays(cursorDate, dir*3);
-    else cursorDate = addDays(cursorDate, dir);
-    render();
+  // ---- editor completo para eventos creados por la persona (§K4/§K6) ----
+  function openEventEditor(base){
+    var wrap = mountSheet(
+      '<button class="close" data-x="close">cerrar ✕</button>' +
+      '<h2>Editar evento</h2>' +
+      '<div class="field"><label>Título</label><input type="text" id="xTitle" value="'+esc(base.title)+'"></div>' +
+      '<div class="row2">' +
+        '<div class="field"><label>Calendario</label><select id="xCal"></select></div>' +
+        '<div class="field"><label>Color</label><input type="color" id="xColor" value="'+(base.color || fillColorForEvent(base))+'"></div>' +
+      '</div>' +
+      '<div id="xAssoc">' +
+        '<div class="field"><label>Supermeta</label><select id="xSuper"></select></div>' +
+        '<div class="field"><label>Meta</label><select id="xGoal"></select></div>' +
+      '</div>' +
+      '<label class="inv-check"><input type="checkbox" id="xInvisible" '+(base.invisible?"checked":"")+'> Evento invisible (solo calendario, §K4)</label>' +
+      '<label class="inv-check"><input type="checkbox" id="xAllDay" '+(base.allDay?"checked":"")+'> Todo el día</label>' +
+      '<div class="row2" id="xTimeRow">' +
+        '<div class="field"><label>Inicio</label><input type="time" id="xStart" value="'+minutesToHHMM(base.startMin)+'"></div>' +
+        '<div class="field"><label>Duración (min)</label><input type="number" id="xMins" value="'+base.minutes+'" min="5" step="5"></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div class="field"><label>Repetir cada</label><select id="xRepeat">' +
+          '<option value="0">Nunca (puntual)</option>' +
+          '<option value="1">1 semana</option>' +
+          '<option value="2">2 semanas</option>' +
+          '<option value="-1">N semanas…</option>' +
+        '</select></div>' +
+        '<div class="field"><label>Hasta (término)</label><input type="date" id="xUntil" value="'+esc(base.until||"")+'"></div>' +
+      '</div>' +
+      '<div class="field" id="xNBox" style="display:none"><label>N (semanas)</label><input type="number" id="xN" value="3" min="1" max="12"></div>' +
+      '<div class="row2"><button class="btn ghost" id="xDelete">Eliminar</button><button class="btn" id="xSave">Guardar</button></div>'
+    );
+    wireEventEditor(wrap, base);
   }
-  document.getElementById("prevBtn").addEventListener("click", function(){ step(-1); });
-  document.getElementById("nextBtn").addEventListener("click", function(){ step(1); });
-  document.getElementById("todayBtn").addEventListener("click", function(){ cursorDate = new Date(); render(); });
-  document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.addEventListener("click", function(){ setView(b.dataset.view); }); });
+  function wireEventEditor(wrap, base){
+    var xSuper = wrap.querySelector("#xSuper"), xGoal = wrap.querySelector("#xGoal");
+    var xCal = wrap.querySelector("#xCal"), xColor = wrap.querySelector("#xColor");
+    var colorDirty = false;
+    xColor.addEventListener("input", function(){ colorDirty = true; });
+    xCal.innerHTML = '<option value="">— automático (según supermeta) —</option>' + CALENDARIOS.map(function(c){
+      return '<option value="'+c.id+'">'+esc(c.name)+'</option>';
+    }).join("");
+    xCal.value = base.calendarId || "";
+    xSuper.innerHTML = '<option value="">— sin asociación —</option>' + SUPERMETAS.filter(function(s){ return !s.anti; }).map(function(s){
+      return '<option value="'+s.id+'">'+esc(s.name)+'</option>';
+    }).join("");
+    if(base.supermetaId) xSuper.value = base.supermetaId;
+    function fillXGoals(){
+      var s = superById(xSuper.value);
+      xGoal.disabled = !s;
+      xGoal.innerHTML = s && s.goals.length
+        ? s.goals.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join("")
+        : '<option value="">—</option>';
+      if(s && base.metaId) xGoal.value = base.metaId;
+    }
+    xSuper.addEventListener("change", fillXGoals);
+    fillXGoals();
+    var xRepeat = wrap.querySelector("#xRepeat");
+    if(base.repeatWeeks){
+      var knownRep = ["1","2"];
+      xRepeat.value = knownRep.indexOf(String(base.repeatWeeks)) >= 0 ? String(base.repeatWeeks) : "-1";
+      if(xRepeat.value === "-1") wrap.querySelector("#xN").value = base.repeatWeeks;
+    }
+    function syncRepeatBox(){ wrap.querySelector("#xNBox").style.display = xRepeat.value === "-1" ? "block" : "none"; }
+    syncRepeatBox();
+    xRepeat.addEventListener("change", syncRepeatBox);
+    wrap.querySelector("#xInvisible").addEventListener("change", function(){
+      wrap.querySelector("#xAssoc").style.display = this.checked ? "none" : "block";
+    });
+    wrap.querySelector("#xAllDay").addEventListener("change", function(){
+      wrap.querySelector("#xTimeRow").style.display = this.checked ? "none" : "grid";
+    });
+    wrap.querySelector('[data-x="close"]').addEventListener("click", function(){ wrap.remove(); });
+    wrap.querySelector("#xDelete").addEventListener("click", function(){
+      wrap.remove();
+      userEvents = userEvents.filter(function(e){ return e !== base; });
+      saveUserEvents();
+      render();
+    });
+    wrap.querySelector("#xSave").addEventListener("click", function(){
+      var t = wrap.querySelector("#xTitle").value.trim();
+      if(!t){ wrap.querySelector("#xTitle").focus(); return; }
+      var sMin = wrap.querySelector("#xStart").value.split(":");
+      var allDay = wrap.querySelector("#xAllDay").checked;
+      var repSel = xRepeat.value;
+      var repWeeks = repSel === "0" ? 0 : (repSel === "-1" ? Math.max(1, parseInt(wrap.querySelector("#xN").value, 10) || 1) : parseInt(repSel, 10));
+      base.title = t;
+      base.allDay = allDay;
+      base.startMin = allDay ? 0 : (parseInt(sMin[0],10)||0)*60 + (parseInt(sMin[1],10)||0);
+      base.minutes = allDay ? 1440 : Math.max(5, parseInt(wrap.querySelector("#xMins").value, 10) || 60);
+      base.calendarId = xCal.value || null;
+      base.color = colorDirty ? xColor.value : null;
+      base.invisible = wrap.querySelector("#xInvisible").checked;
+      base.supermetaId = base.invisible ? null : (xSuper.value || null);
+      base.metaId = base.supermetaId ? (xGoal.value || null) : null;
+      base.repeatWeeks = repWeeks;
+      base.until = repWeeks ? (wrap.querySelector("#xUntil").value || null) : null;
+      saveUserEvents();
+      wrap.remove(); render();
+    });
+  }
 
+  // ---- render principal + controles ----
+  function updateSwitch(){
+    document.querySelectorAll("#viewSwitch button").forEach(function(b){
+      b.setAttribute("aria-pressed", String(b.dataset.view === currentView));
+    });
+  }
+  function render(){
+    document.getElementById("periodLabel").textContent = periodText();
+    if(currentView === "year") renderYear();
+    else if(currentView === "month") renderMonth();
+    else renderTimeline();
+    renderCalList();
+    updateSwitch();
+  }
+  document.getElementById("prevBtn").addEventListener("click", function(){ shiftAnchor(-1); });
+  document.getElementById("nextBtn").addEventListener("click", function(){ shiftAnchor(1); });
+  document.getElementById("todayBtn").addEventListener("click", function(){ anchor = new Date(); render(); });
+  document.querySelectorAll("#viewSwitch button").forEach(function(b){
+    b.addEventListener("click", function(){ currentView = b.dataset.view; render(); });
+  });
+  document.getElementById("searchInput").addEventListener("input", function(){
+    searchQuery = this.value.trim(); render();
+  });
   document.getElementById("pinDefaultBtn").addEventListener("click", function(){
-    try{ localStorage.setItem(DEFAULT_VIEW_KEY, view); }catch(e){}
-    document.getElementById("pinDefaultBtn").classList.add("is-default");
+    saveJSON(VIEW_KEY, currentView);
+    this.textContent = "Vista fijada ✓";
+    var btn = this;
+    setTimeout(function(){ btn.textContent = "Fijar como vista por defecto"; }, 1600);
   });
+  document.getElementById("fabAdd").addEventListener("click", function(){ openCreateSheet(); });
 
-  document.getElementById("addLayerBtn").addEventListener("click", function(){
-    var name = document.getElementById("newLayerName").value.trim();
-    if(!name) return;
-    var color = document.getElementById("newLayerColor").value;
-    CAPAS.push({ id: "cap"+Date.now(), name: name, color: color });
-    saveCapas(); document.getElementById("newLayerName").value = "";
-    renderLayers(); render();
-  });
-
-  function openFabPopup(){
-    var wrap = document.createElement("div");
-    wrap.className = "overlay";
-    wrap.innerHTML = '<div class="sheet">' +
-      '<button class="close" id="closeFab">cerrar</button>' +
-      '<h2>¿Qué querés hacer?</h2>' +
-      '<div class="choice-cards">' +
-        '<button class="choice-card" id="goEventHere" type="button"><span class="ic">▦</span><span><strong>Agregar evento a este día</strong><span>'+cursorDate.toLocaleDateString("es",{day:"numeric",month:"long"})+'</span></span></button>' +
-        '<button class="choice-card" id="goCreateFromCal" type="button"><span class="ic">✺</span><span><strong>Crear meta / iniciar bloque</strong><span>Abre el mismo panel de Inicio</span></span></button>' +
-      '</div></div>';
-    document.getElementById("sheetRoot").appendChild(wrap);
-    wrap.addEventListener("pointerdown", function(ev){ if(ev.target === wrap) wrap.remove(); }); // v3 §B2: presionar fuera cierra
-    wrap.querySelector("#closeFab").addEventListener("click", function(){ wrap.remove(); });
-    wrap.querySelector("#goEventHere").addEventListener("click", function(){ wrap.remove(); openDaySheet(isoOf(cursorDate)); });
-    wrap.querySelector("#goCreateFromCal").addEventListener("click", function(){ window.location.href = NAV_URLS.inicio + "?action=create"; });
-  }
-  document.getElementById("fabAdd").addEventListener("click", openFabPopup);
-  document.getElementById("searchInput").addEventListener("input", function(e){
-    searchQuery = e.target.value.trim().toLowerCase();
-    render();
-  });
-
-  function openLayersPanel(){ layersPanel.classList.add("open"); backdrop.classList.add("show"); }
-  function closeLayersPanel(){ layersPanel.classList.remove("open"); backdrop.classList.remove("show"); }
-  document.getElementById("openLayers").addEventListener("click", openLayersPanel);
-  document.getElementById("closeLayers").addEventListener("click", closeLayersPanel);
-  backdrop.addEventListener("click", closeLayersPanel);
-
-  document.querySelectorAll("#viewSwitch button").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.view===view); });
-  document.getElementById("pinDefaultBtn").classList.toggle("is-default", loadDefaultView() === view);
-  renderLayers();
   render();
-
-  setInterval(function(){
-    var line = document.getElementById("tlNow");
-    if(!line) return;
-    var startHour = 7;
-    var nowMin = new Date().getHours()*60 + new Date().getMinutes();
-    line.style.top = ((nowMin - startHour*60) / 60 * 44) + "px";
-  }, 30000);
 })();
 </script>
+</body>
+</html>

@@ -164,6 +164,12 @@
   .palette{ display: flex; gap: 5px; flex-wrap: wrap; }
   .palette button{ width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
   .palette button[aria-pressed="true"]{ border-color: var(--ink); }
+  /* v3.4 §C1: selector RGB libre — cualquier color vale, no solo la paleta default */
+  .custom-color{
+    width: 26px; height: 22px; padding: 0; border: 1px solid var(--rule-strong);
+    border-radius: 5px; background: var(--paper-raised); cursor: pointer;
+  }
+  .custom-color.active{ border-color: var(--accent); border-width: 2px; }
   .sheet .actions{ display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
   .sheet .note{ font-size: 11px; color: var(--muted); line-height: 1.45; }
 </style>
@@ -238,6 +244,7 @@
       <div class="form-row">
         <label>Color de la supermeta (default: el del calendario)</label>
         <div class="palette" id="cSuperPalette"></div>
+        <input type="color" id="cSuperCustom" class="custom-color" title="Color personalizado RGB (v3.3)">
       </div>
       <div class="form-row">
         <label>Plazo de cumplimiento — máx. 1 año, mín. 1 segundo (§I6)</label>
@@ -256,6 +263,7 @@
       <select id="cGoalSuper"></select>
       <label style="margin-top:6px">Color de la meta (color del bloque en el calendario · §K3)</label>
       <div class="palette" id="cGoalPalette"></div>
+      <input type="color" id="cGoalCustom" class="custom-color" title="Color personalizado RGB (v3.4 §C1)">
       <label style="margin-top:6px">Plazo de cumplimiento (§I6)</label>
       <input type="datetime-local" id="cGoalDeadline">
       <label style="margin-top:6px">Tareas y subtareas (una por línea — base del % · §I7)</label>
@@ -331,15 +339,46 @@
         deadline: null, calendarId: null, metas: [] }
     ];
   }
+  // v3.3: hash estable por id — variedad pseudo-aleatoria determinista (no cambia al recargar)
+  function hashSeed(str){
+    var h = 2166136261;
+    for(var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+    return h;
+  }
+  // v3.3 §I7: % de completitud PONDERADO por importancia — tareas (weight 1–3) más
+  // eventos de calendario asociados a la meta que ya ocurrieron (fecha pasada).
   function goalPct(g){
-    if(!g.tareas || !g.tareas.length) return 0;
-    return Math.round(g.tareas.filter(function(t){ return t.done; }).length / g.tareas.length * 100);
+    var total = 0, done = 0, today = todayISO();
+    (g.tareas || []).forEach(function(t){
+      var w = t.weight || 2; total += w; if(t.done) done += w;
+    });
+    eventsForMeta(g.id).forEach(function(e){
+      var w = e.weight || 2; total += w; if(e.date < today) done += w;
+    });
+    return total ? Math.round(done / total * 100) : 0;
   }
   function superPct(p){
-    var all = [];
-    p.metas.forEach(function(m){ all = all.concat(m.tareas || []); });
-    if(!all.length) return 0;
-    return Math.round(all.filter(function(t){ return t.done; }).length / all.length * 100);
+    var total = 0, done = 0, today = todayISO();
+    p.metas.forEach(function(m){
+      (m.tareas || []).forEach(function(t){
+        var w = t.weight || 2; total += w; if(t.done) done += w;
+      });
+      eventsForMeta(m.id).forEach(function(e){
+        var w = e.weight || 2; total += w; if(e.date < today) done += w;
+      });
+    });
+    return total ? Math.round(done / total * 100) : 0;
+  }
+  // v3.3: eventos de calendario asociados a una meta (misma fuente que calendario.html)
+  function eventsForMeta(metaId){
+    try{
+      var evs = JSON.parse(localStorage.getItem("productvt-calendario-invisibles-v1") || "[]");
+      return evs.filter(function(e){ return e.metaId === metaId; });
+    }catch(err){ return []; }
+  }
+  function todayISO(){
+    var d = new Date(), p = function(n){ return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
   }
   // §I1: las lunas se orientan hacia abajo de la supermeta, manteniendo equidistancia
   function moonAngle(p, m){
@@ -463,7 +502,18 @@
     var amap = layoutAngles();
     planets.forEach(function(p){
       if(!showAnti && p.anti) return;
-      if(focusId && focusId !== p.id) return;
+      var el = stage.querySelector('[data-planet="'+p.id+'"]');
+      if(focusId && focusId !== p.id){
+        // v3.2 §E6: en foco la pantalla es COMPLETA — las demás supermetas y sus lunas
+        // quedan ocultas (antes se quedaban congeladas en su última posición y se veían).
+        if(el) el.style.display = "none";
+        p.metas.forEach(function(m){
+          var mo = stage.querySelector('[data-moon="'+m.id+'"]');
+          if(mo) mo.style.display = "none";
+        });
+        return;
+      }
+      if(el) el.style.display = "";
       if(p._x === undefined) return;
       if(draggingId !== p.id){
         p.ax += (p._x - p.ax) * 0.16;
@@ -486,21 +536,37 @@
           orbits[m.id] = ((orbits[m.id] === undefined ? moonAngle(p, m) : orbits[m.id]) + speed) % 360;
           target = orbits[m.id];
         } else {
-          // §I1 base hacia abajo y equidistante; §I5 deriva orbital leve alrededor de esa base
-          var base = orbits[m.id] === undefined ? moonAngle(p, m) : orbits[m.id];
-          var idx = p.metas.indexOf(m);
-          var drift = 5 * Math.sin(performance.now() / 2600 + idx * 1.3);
-          target = base + drift;
+          // §I1 base hacia abajo y equidistante; v3.3: variedad pseudo-aleatoria estable
+          // (unas hacia abajo, otras hacia el lado) + órbita elíptica pequeña alrededor
+          // de su propia posición — en la vista general NO es un círculo alrededor del planeta.
+          target = orbits[m.id] === undefined ? moonAngle(p, m) : orbits[m.id];
         }
         if(m._a === undefined) m._a = target;
         m._a += shortestDelta(m._a, target) * 0.2;
-        var rOv = moonRadius(p, m);
-        var rad = m._a * Math.PI / 180;
+        var seed = hashSeed(m.id);
+        var inFocus = focusId === p.id;
+        var aDeg = m._a + (inFocus ? 0 : ((seed % 90) - 45));       // ±45° de variedad estable
+        var radF = 0.9 + ((seed >> 4) % 25) / 100;                  // radio 0.90–1.15×
+        var rOv = moonRadius(p, m) * (inFocus ? 1 : radF);
+        var rad = aDeg * Math.PI / 180;
         m._x = p.ax + rOv * Math.cos(rad);
         m._y = p.ay + rOv * Math.sin(rad);
+        if(!inFocus){
+          // v3.3: órbita elíptica pequeña propia, orientada y tempos al azar (estables por id)
+          var tSec = performance.now() / 1000;
+          var eA = 7 + ((seed >> 6) % 5);                            // semieje mayor 7–11 px
+          var eW = 0.4 + ((seed >> 8) % 25) / 100;                   // velocidad 0.40–0.64 rad/s
+          var ePh = ((seed >> 10) % 628) / 100;                      // fase
+          var tilt = (seed % 60) * Math.PI / 180;                    // inclinación de la elipse
+          var ex0 = eA * Math.cos(tSec * eW + ePh);
+          var ey0 = eA * 0.55 * Math.sin(tSec * eW + ePh);
+          m._x += ex0 * Math.cos(tilt) - ey0 * Math.sin(tilt);
+          m._y += ex0 * Math.sin(tilt) + ey0 * Math.cos(tilt);
+        }
         var mo = stage.querySelector('[data-moon="'+m.id+'"]');
         if(mo){
           var ms = focusId === p.id ? 16 : 9; // §I3: en foco las lunas se ven con mayor resolución
+          mo.style.display = ""; // restaurar visibilidad al salir del foco (v3.2)
           mo.style.width = ms + "px"; mo.style.height = ms + "px";
           mo.style.left = (m._x - ms / 2) + "px";
           mo.style.top = (m._y - ms / 2) + "px";
@@ -631,7 +697,9 @@
     document.getElementById("fhName").style.display = "";
   });
   document.getElementById("fhConfig").addEventListener("click", function(){
-    location.href = "configuracion.html"; // §I8/J4: redirige al panel de gestión pulido
+    // v3.2 §I8/J4: solo redirige a Configuración con la supermeta seleccionada
+    // (no destruye esta pantalla — vuelve con el botón atrás del navegador).
+    location.href = "configuracion.html?super=" + encodeURIComponent(focusId || "");
   });
   function persistSupermetas(){
     try{
@@ -718,16 +786,28 @@
   var createMode = null, cSuperColor = cals[0].color, cGoalColor = PALETTE[0], cAnti = false;
   function wirePalette(el, get, set){
     el.innerHTML = "";
+    var inp = document.getElementById(el.id.replace("Palette", "Custom")); // v3.3: picker RGB personalizado
+    function markActive(active){
+      Array.prototype.slice.call(el.children).forEach(function(x){ x.setAttribute("aria-pressed", String(x === active)); });
+    }
     PALETTE.forEach(function(col){
       var b = document.createElement("button");
       b.type = "button"; b.style.background = col;
       b.setAttribute("aria-pressed", String(col === get()));
       b.addEventListener("click", function(){
         set(col);
-        Array.prototype.slice.call(el.children).forEach(function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+        if(inp) inp.value = col; // sincronizar el picker con el color default elegido
+        markActive(b);
       });
       el.appendChild(b);
     });
+    if(inp){
+      inp.value = get();
+      inp.addEventListener("input", function(){
+        set(inp.value);   // color personalizado RGB (v3.3)
+        markActive(null); // ningún swatch del default queda marcado
+      });
+    }
   }
   function fillCals(){
     var sel = document.getElementById("cSuperCal");

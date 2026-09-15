@@ -1,23 +1,28 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Productvt · Preview</title>
 <!--
-  Preview interactiva de la app (mockup de alta fidelidad funcional).
-  - Tab bar real del producto (src/app/(tabs)/_layout.tsx): Cronómetro, Calendario,
-    Estadísticas, Configuración + la Galaxia de inicio (01-mockups/mobile/inicio.html).
-  - Cada tab embebe su mockup interactivo ya existente (skin "Papel"):
-    cronometro.html tiene la máquina de estados completa del cronómetro
-    (docs/03-CRONOMETRO.md): bloques, banco de descanso, ventanas de respuesta,
-    almuerzo, cronómetro inverso, cancelación en dos pasos y panel de conflicto.
-    Incluye controles de simulación (velocidad, saltar timer) arriba a la derecha.
-  - Inicio = galaxia-v2.html (enmienda v3 §E: planetas/mini-planetas tipo Obsidian
-    Graph View, arrastre con acomodo circular, vista de foco, antimetas ocultas).
-    inicio.html queda como histórico.
-  - Configuración incluye la jerarquía editable de supermetas/metas (v3 §F1).
-  - Este archivo es solo un contenedor de preview: el código real vive en productvt-beta/.
+  Preview interactiva de la app (mockup de alta fidelidad funcional) — v3.2 (2026-09-15).
+  RECREACIÓN: esta carpeta de respaldo ahora es AUTOCONTENIDA (todos los módulos viven
+  junto a este archivo, sin subcarpeta mobile/), así que abrir preview-app.html aquí
+  funciona directamente. La copia canónica vive en 01-mockups/ (con los módulos en
+  01-mockups/mobile/), y ambas se mantienen sincronizadas.
+
+  - Tab bar real del producto (src/app/(tabs)/_layout.tsx): Cronómetro, Inicio (Galaxia),
+    Calendario, Estadísticas, Configuración.
+  - cronometro.html: máquina de estados completa (docs/03-CRONOMETRO.md) con flujo por
+    pasos v3 §C2–C3 / v3.1 §H (preset/personalizar, supermeta → meta → tarea/evento,
+    "Iniciar bloque"). Todo bloque finalizado se persiste en productvt-blocks-v1 (§D1).
+  - calendario.html: recreado v3.2 — calendarios gestionables, panel de creación estilo
+    Google Calendar (evento puntual / tarea recurrente / evento invisible), 3 colores con
+    rallitas (§K3), arrastre con snap, hoy + línea de ahora, bloques ⏱ del cronómetro.
+  - galaxia-v2.html: enmienda v3 §E + v3.1 §I (planetas tipo Obsidian, órbita, vista de
+    foco, antimetas ocultas, plazos, porcentaje).
+  - configuracion.html: jerarquía editable v3.1 §J + gestión de calendarios §K2.
+  - estadisticas.html: recreado v3.2 sobre supermetas/metas (sin categorías, §K1).
 -->
 <style>
   :root{
@@ -86,19 +91,19 @@
 <div class="app">
   <div class="views" id="views">
     <div class="view show" data-tab="cronometro">
-      <iframe src="mobile/cronometro.html" title="Cronómetro"></iframe>
+      <iframe src="cronometro.html" title="Cronómetro"></iframe>
     </div>
     <div class="view" data-tab="galaxia">
-      <iframe src="mobile/galaxia-v2.html" title="Constelación de metas (v2)"></iframe>
+      <iframe src="galaxia-v2.html" title="Constelación de metas (v2)"></iframe>
     </div>
     <div class="view" data-tab="calendario">
-      <iframe src="mobile/calendario.html" title="Calendario"></iframe>
+      <iframe src="calendario.html" title="Calendario"></iframe>
     </div>
     <div class="view" data-tab="stats">
-      <iframe src="mobile/estadisticas.html" title="Estadísticas"></iframe>
+      <iframe src="estadisticas.html" title="Estadísticas"></iframe>
     </div>
     <div class="view" data-tab="settings">
-      <iframe src="mobile/configuracion.html" title="Configuración"></iframe>
+      <iframe src="configuracion.html" title="Configuración"></iframe>
     </div>
   </div>
   <div class="tabbar" role="tablist">

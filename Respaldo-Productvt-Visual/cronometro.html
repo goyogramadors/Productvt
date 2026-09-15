@@ -163,6 +163,29 @@
   .type-btn[aria-pressed="true"] strong{ color: var(--accent); }
 
   .choices{ display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* v3.5 §B1: lista de presets VERTICAL y ordenada — cada formato es una fila
+     numerada de ancho completo (nada de óvalos arbitrarios en horizontal).
+     Orden: built-in primero, luego personalizados alfabéticamente (ordenados en
+     JS vía orderedPresets()). "+ Nuevo preset" cierra la lista como una fila
+     más, claramente opcional (no un paso secuencial). */
+  #presetChoices{ flex-direction: column; align-items: stretch; width: 100%; gap: 5px; }
+  #presetChoices .choice.preset{
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    border-radius: 8px; padding: 8px 26px 8px 10px;
+  }
+  #presetChoices .choice.preset::before{
+    content: counter(preset-n); counter-increment: preset-n;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted);
+    min-width: 15px; text-align: right;
+  }
+  #presetChoices{ counter-reset: preset-n; }
+  #presetChoices .choice.preset[aria-pressed="true"]::before{ color: var(--accent); }
+  #presetChoices .choice.preset .pspec{
+    margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; color: var(--muted);
+  }
+  #presetChoices .choice.preset[aria-pressed="true"] .pspec{ color: var(--accent); }
+  #presetChoices .choice.new-preset{ width: 100%; border-radius: 8px; padding: 8px 10px; text-align: center; }
   .choice{
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
@@ -178,6 +201,13 @@
   .choice:disabled{ opacity: .45; cursor: not-allowed; }
   .choice.preset{ padding-right: 24px; position: relative; }
   .choice.add-cat{ border-style: dashed; color: var(--muted); }
+  /* v3.5 §E2: color picker RGB personalizado — renglón compacto bajo la paleta
+     default (supermeta, meta, calendario, evento): swatch nativo + etiqueta. */
+  .custom-color{ display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .custom-color input[type="color"]{
+    width: 30px; height: 22px; border: 1px solid var(--rule-strong);
+    border-radius: 6px; background: none; padding: 1px; cursor: pointer;
+  }
   .choice .preset-x{
     position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
     font-size: 14px; line-height: 1; color: var(--muted);
@@ -194,6 +224,29 @@
   .sq-btn[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); }
   .sq-btn[aria-pressed="true"] strong{ color: var(--accent); }
   .presets-tools{ display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+  /* v3.4 §H1b: la lista de presets es VERTICAL y ordenada (no óvalos sueltos arbitrarios).
+     Cada formato es una fila numerada de ancho completo; "+ Nuevo preset" cierra la lista
+     como una fila más, claramente opcional (no un paso secuencial). */
+  #presetChoices{ flex-direction: column; align-items: stretch; width: 100%; gap: 5px; }
+  #presetChoices .choice.preset{
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    border-radius: 8px; padding: 8px 26px 8px 10px;
+  }
+  #presetChoices .choice.preset::before{
+    content: counter(preset-n); counter-increment: preset-n;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted);
+    min-width: 15px; text-align: right;
+  }
+  #presetChoices{ counter-reset: preset-n; }
+  #presetChoices .choice.preset[aria-pressed="true"]::before{ color: var(--accent); }
+  #presetChoices .choice.preset .pspec{
+    margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; color: var(--muted);
+  }
+  #presetChoices .choice.preset[aria-pressed="true"] .pspec{ color: var(--accent); }
+  #presetChoices .choice.new-preset{ width: 100%; border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .choice.new-preset{ background: transparent; border: 1px dashed var(--rule-strong); color: var(--muted); font-size: 12.5px; }
+  .choice.new-preset:hover{ border-color: var(--accent); color: var(--accent); }
   .step-title{
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 11px; letter-spacing: .05em; text-transform: uppercase;
@@ -242,17 +295,24 @@
     border: 1px solid var(--rule-strong); border-radius: 6px; padding: 4px 6px;
   }
 
-  .time-chips{ display: flex; flex-wrap: wrap; gap: 6px; }
+  /* v3.4 §H2: las opciones de tiempo son una COLUMNA ordenada de menor a mayor,
+     no una fila de óvalos arbitrarios. */
+  .time-chips{ display: flex; flex-direction: column; gap: 4px; }
   .tchip{
     font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
     border: 1px solid var(--rule-strong); background: var(--paper-raised); color: var(--ink);
-    border-radius: 14px; padding: 5px 10px; cursor: pointer; position: relative;
+    border-radius: 7px; padding: 5px 9px; cursor: pointer; position: relative;
+    text-align: left; width: 100%;
   }
   .tchip[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .tchip.custom{ padding-right: 20px; }
-  .tchip.add{ border-style: dashed; color: var(--muted); }
+  .tchip.add{ border-style: dashed; color: var(--muted); text-align: center; }
+  .tchip.psaved{ border-left: 3px solid var(--rule-strong); }
+  .tchip .tchip-note{ float: right; color: var(--muted); font-size: 10px; }
   .tchip-x{ position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
   .tchip-x:hover{ color: var(--danger); }
+  /* el panel de personalización acomoda las columnas de tiempo lado a lado */
+  .settings-block .time-chips{ max-width: 150px; }
 
   .custom-time-row{ display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .custom-time-row input[type="number"]{
@@ -441,6 +501,14 @@
   }
   var SUPERMETAS = loadSupermetas();
   function supermetaById(id){ return SUPERMETAS.find(function(s){ return s.id === id; }); }
+  // v3.4 §C3c: el cronómetro también puede definir un evento de una meta al vuelo
+  // (cuando la meta todavía no tiene eventos y el Paso 4 mostraría una lista vacía).
+  function saveSupermetas(){ try{ localStorage.setItem(SUPERMETAS_KEY, JSON.stringify(SUPERMETAS)); }catch(e){} }
+  function uidShort(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+  function escHtml(s){
+    return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
   function goalById(sg, id){ return sg ? sg.goals.find(function(g){ return g.id === id; }) : null; }
 
   var DEFAULT_TIME_OPTIONS = {
@@ -485,6 +553,19 @@
   var presets = loadPresets();
   if(!presets.some(function(p){ return p.id === BUILTIN_PRESET.id; })){
     presets = [BUILTIN_PRESET].concat(presets); // v3 §C2: preset por defecto (no persistido)
+  }
+  // v3.4 §H1b: la lista se muestra ORDENADA (el Pomodoro clásico siempre primero como
+  // default, y el resto de menor a mayor duración de estudio, desempate por nombre).
+  function orderedPresets(){
+    var builtin = presets.filter(function(p){ return p.id === BUILTIN_PRESET.id; });
+    var rest = presets.filter(function(p){ return p.id !== BUILTIN_PRESET.id; });
+    rest.sort(function(a, b){
+      return (a.studyMinutes - b.studyMinutes) || String(a.name).localeCompare(String(b.name));
+    });
+    return builtin.concat(rest);
+  }
+  function presetSpec(p){
+    return p.studyMinutes + "/" + p.shortBreakMinutes + "/" + p.longBreakMinutes + " · " + p.cyclesBeforeLongBreak + " ciclos";
   }
   var config = {
     studyMinutes: 25,
@@ -549,6 +630,9 @@
     chosenGoalId: null,       // v3 §C2 paso 3
     blockKind: null,          // v3 §C3 paso 4: "evento" | "tarea"
     chosenTargetId: null,     // v3 §C3: evento o tarea elegida
+    eventScope: "meta",       // v3.4 §C3b: "meta" (evento definido en la meta) | "aparte"
+    standaloneName: "",       // v3.4 §C3b: nombre del evento aparte
+    showMetaEventForm: false, // v3.4 §C3c: la meta aún no tiene eventos → form de ejemplo
     activePresetId: null,
     metaFlashed: false,
     speed: 30,
@@ -636,20 +720,51 @@
     var sg = supermetaById(state.chosenSupermetaId);
     if(!sg) return null;
     var goal = goalById(sg, state.chosenGoalId);
+    // v3.4 §C3b: un "evento aparte" ocurre una vez y no pertenece a ninguna meta:
+    // se registra en el calendario pero no suma al cumplimiento de la meta/supermeta.
+    var standalone = state.blockKind === "evento" && state.eventScope === "aparte";
     var target = null;
-    if(goal && state.blockKind === "evento") target = goal.eventos.filter(function(e){ return e.id === state.chosenTargetId; })[0];
-    if(goal && state.blockKind === "tarea") target = goal.tareas.filter(function(t){ return t.id === state.chosenTargetId; })[0];
+    if(!standalone && goal && state.blockKind === "evento") target = goal.eventos.filter(function(e){ return e.id === state.chosenTargetId; })[0];
+    if(!standalone && goal && state.blockKind === "tarea") target = goal.tareas.filter(function(t){ return t.id === state.chosenTargetId; })[0];
     return {
-      supermeta: sg.name, anti: !!sg.anti,
-      goal: goal ? goal.name : null,
+      supermeta: sg.name, supermetaId: sg.id, anti: !!sg.anti,
+      goal: (goal && !standalone) ? goal.name : null, goalId: (goal && !standalone) ? goal.id : null,
       kind: state.blockKind,
-      target: target ? target.name : null,
+      standalone: standalone,
+      target: standalone ? (state.standaloneName || "Evento aparte") : (target ? target.name : null),
       targetSeconds: target && target.targetSeconds ? target.targetSeconds : null,
       // v3 §D2–D3: calendario vinculado; si no hay, la supermeta crea uno propio con su nombre y color
-      calendar: sg.calendar || sg.name,
-      ownCalendar: !sg.calendar,
-      color: sg.calendar ? null : sg.color
+      calendar: sg.calendarId || sg.name,
+      ownCalendar: !sg.calendarId,
+      color: sg.calendarId ? null : sg.color
     };
+  }
+
+  // v3 §D1: TODO bloque de cronómetro al ser finalizado se crea como cuadro en el
+  // calendario (clave compartida productvt-blocks-v1; el calendario lo pinta con el
+  // color de la meta y las rallitas de calendario/supermeta, §K3).
+  function persistFinishedBlock(status){
+    try{
+      if(!session) return;
+      var link = session.link || {};
+      var blocks = JSON.parse(localStorage.getItem("productvt-blocks-v1") || "[]");
+      var now = new Date();
+      var p = function(n){ return (n < 10 ? "0" : "") + n; };
+      var startMin = Math.max(0, (now.getHours()*60 + now.getMinutes()) - Math.round((session.effectiveStudySeconds || 0)/60));
+      blocks.push({
+        id: "b" + now.getTime(),
+        date: now.getFullYear()+"-"+p(now.getMonth()+1)+"-"+p(now.getDate()),
+        startMin: startMin,
+        seconds: session.effectiveStudySeconds || 0,
+        title: link.target || link.goal || link.supermeta || "Bloque de estudio",
+        supermetaId: state.chosenSupermetaId || null,
+        metaId: state.chosenGoalId || null,
+        kind: state.blockKind || null,
+        anti: !!link.anti,
+        status: status
+      });
+      localStorage.setItem("productvt-blocks-v1", JSON.stringify(blocks));
+    }catch(e){}
   }
 
   function enterStudyRunning(){ // T1 / T9 / T13 (retorno) / T14->T13
@@ -729,7 +844,7 @@
   }
 
   function continueStudy(){ enterStudyRunning(); } // T9
-  function endSession(){ goto("session_completed"); } // T7 / T10
+  function endSession(){ persistFinishedBlock("completed"); goto("session_completed"); } // T7 / T10 + §D1
 
   function requestLunch(){ // T11 / T12
     if(!isLunchAvailable()) return;
@@ -764,7 +879,7 @@
     }
   }
 
-  function handleExpire(){ goto("session_expired"); } // T17, auto
+  function handleExpire(){ persistFinishedBlock("expired"); goto("session_expired"); } // T17, auto + §D1
 
   function startInverso(){
     state.targetSeconds = config.inversoMinutes * 60;
@@ -881,20 +996,28 @@
       html += '<div class="state-label">'+(mode==="normal"?"Elegí qué vas a estudiar":"Elegí cómo vas a descansar")+'</div>';
 
       if(mode === "normal"){
-        // ---- v3.1 §H1: paso 1 no excluyente — dos toggles cuadrados ----
-        html += '<div class="step-block'+(state.presetOn ? " done" : "")+'">';
+        // ---- v3.1 §H1 (v3.2: excluyentes) — dos toggles cuadrados de igual tamaño; el estado marcado es el que se ve ----
+        html += '<div class="step-block'+(state.presetOn || state.personalizeOn ? " done" : "")+'">';
         html += '<div class="step-title">Paso 1 · Formato de bloques</div>';
         html += '<div class="choices">' +
           '<button class="sq-btn" id="usePresetToggle" aria-pressed="'+(state.presetOn?"true":"false")+'" type="button"><strong>Usar preset</strong>lista de formatos guardados</button>' +
           '<button class="sq-btn" id="personalizeToggle" aria-pressed="'+(state.personalizeOn?"true":"false")+'" type="button"><strong>Personalizar</strong>definir bloques a mano</button>' +
           '</div>';
         if(state.presetOn){
-          html += '<div class="choices" id="presetChoices">' + presets.map(function(p){
-            return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'">'+p.name+(state.editingPresets?'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span>':'')+'</button>';
-          }).join("") + '</div>';
+          // v3.2 §H1b: "+ Nuevo preset" vive DENTRO de la lista como una alternativa más
+          // (chip fantasma al final, claramente opcional), no como un paso secuencial;
+          // "Editar" queda aparte como gestión de la lista.
+          html += '<div class="choices" id="presetChoices">' + orderedPresets().map(function(p){
+            return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'">' +
+              '<span class="pname">'+p.name+(p.id===BUILTIN_PRESET.id?' <small>· por defecto</small>':'')+'</span>' +
+              '<span class="pspec">'+presetSpec(p)+'</span>' +
+              (state.editingPresets?'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span>':'') +
+              '</button>';
+          }).join("") +
+            '<button class="choice new-preset" id="newPresetBtn" type="button" title="Definir bloques a mano y guardarlos como formato">+ Nuevo preset</button>' +
+            '</div>';
           html += '<div class="presets-tools">' +
-            '<button class="mini-btn" id="newPresetBtn" type="button">Crear nuevo preset</button>' +
-            '<button class="mini-btn ghost" id="editPresetsBtn" type="button">'+(state.editingPresets ? "Listo" : "Editar")+'</button>' +
+            '<button class="mini-btn ghost" id="editPresetsBtn" type="button">'+(state.editingPresets ? "Listo" : "Editar lista")+'</button>' +
             '</div>';
         }
         html += '</div>';
@@ -924,16 +1047,43 @@
               '</div>';
             html += '</div>';
             if(state.blockKind === "evento"){
-              html += '<div class="choices">' + goal.eventos.map(function(ev){
-                return '<button class="choice" data-evento="'+ev.id+'" aria-pressed="'+(ev.id===state.chosenTargetId)+'"><span class="swatch" style="background:'+sg.color+'"></span>'+ev.name+'<small>'+ev.when+'</small></button>';
-              }).join("") + '</div>';
-              html += '<div class="helper">Confirma “estoy cumpliendo este evento” definido en tu meta y en tu calendario (v3 §C3).</div>';
+              // v3.4 §C3b: no basta con "evento" — hay que decir si el bloque califica
+              // como un evento YA definido en la meta (y en su calendario) o si es un
+              // evento aparte (ocurre una vez, pero no cuenta para ninguna meta).
+              html += '<div class="choices">' +
+                '<button class="choice" data-scope="meta" aria-pressed="'+(state.eventScope!=="aparte")+'">Evento de la meta</button>' +
+                '<button class="choice" data-scope="aparte" aria-pressed="'+(state.eventScope==="aparte")+'">Evento aparte</button>' +
+                '</div>';
+              if(state.eventScope === "aparte"){
+                html += '<div class="custom-time-row">' +
+                  '<input type="text" id="standaloneName" placeholder="Ej: Ensayo abierto" value="'+escHtml(state.standaloneName||"")+'">' +
+                  '</div>';
+                html += '<div class="helper">El bloque queda registrado como cuadro en el calendario, pero no da puntaje a ninguna meta (v3 §C3).</div>';
+              } else if(goal.eventos.length){
+                html += '<div class="choices">' + goal.eventos.map(function(ev){
+                  return '<button class="choice" data-evento="'+ev.id+'" aria-pressed="'+(ev.id===state.chosenTargetId)+'"><span class="swatch" style="background:'+sg.color+'"></span>'+escHtml(ev.name)+'<small>'+escHtml(ev.when||"evento de la meta")+'</small></button>';
+                }).join("") + '</div>';
+                html += '<div class="helper">Confirma “estoy cumpliendo este evento” definido en tu meta y en tu calendario (v3 §C3).</div>';
+              } else {
+                // v3.4 §C3c: sin eventos la lista quedaba vacía y el botón parecía muerto.
+                // Ahora se explica y se ofrece el ejemplo para definirlo ahí mismo.
+                html += '<div class="helper">Esta meta todavía no tiene eventos definidos. Ejemplo: «Certamen 1» o «Entrega final». Definilo acá y queda en la meta y en su calendario.</div>';
+                html += '<div class="custom-time-row">' +
+                  '<input type="text" id="newMetaEvent" placeholder="Ej: Certamen 1">' +
+                  '<input type="date" id="newMetaEventDate">' +
+                  '<button class="mini-btn" id="addMetaEventBtn" type="button">Añadir evento</button>' +
+                  '</div>';
+              }
             }
             if(state.blockKind === "tarea"){
-              html += '<div class="choices">' + goal.tareas.map(function(t){
-                return '<button class="choice" data-tarea="'+t.id+'" aria-pressed="'+(t.id===state.chosenTargetId)+'">'+t.name+'<small>objetivo '+fmtMin(t.targetSeconds||0)+'</small></button>';
-              }).join("") + '</div>';
-              html += '<div class="helper">El tiempo se registra de forma exacta a esta tarea atemporal (v3 §C3). Si superas el objetivo el bloque no se corta: queda exceso en estadísticas y el puntaje se gana al llegar al objetivo (v3 §C4).</div>';
+              if(goal.tareas.length){
+                html += '<div class="choices">' + goal.tareas.map(function(t){
+                  return '<button class="choice" data-tarea="'+t.id+'" aria-pressed="'+(t.id===state.chosenTargetId)+'">'+escHtml(t.name)+'<small>objetivo '+fmtMin(t.targetSeconds||0)+'</small></button>';
+                }).join("") + '</div>';
+                html += '<div class="helper">El tiempo se registra de forma exacta a esta tarea atemporal (v3 §C3). Si superas el objetivo el bloque no se corta: queda exceso en estadísticas y el puntaje se gana al llegar al objetivo (v3 §C4).</div>';
+              } else {
+                html += '<div class="helper">Esta meta todavía no tiene tareas. Agregalas desde Configuración → Jerarquía (lápiz de la meta) para poder cargar tiempo a ellas.</div>';
+              }
             }
           } else if(sg.anti){
             html += '<div class="helper">La antimeta no tiene metas: el tiempo queda registrado sin puntaje (v3 §A7).</div>';
@@ -1090,16 +1240,19 @@
       });
     });
 
-    // ---- v3 §C2/§C3: handlers del flujo por pasos ----
-    // ---- v3.1 §H1–H2: toggles cuadrados del paso 1 y gestión de presets ----
+    // ---- v3.2 §H1: toggles EXCLUYENTES — apretar uno apaga el otro directamente
+    // (sin cambiar tamaño de los botones, solo el estado visible) ----
     if(el = document.getElementById("usePresetToggle")) el.addEventListener("click", function(){
-      state.presetOn = !state.presetOn;
-      if(!state.presetOn) state.showSaveForm = false; // salir del modo preset descarta el preset en creación
+      state.presetOn = true;
+      state.personalizeOn = false;
+      state.editingPresets = false;
+      state.showSaveForm = false;
       render();
     });
     if(el = document.getElementById("personalizeToggle")) el.addEventListener("click", function(){
-      state.personalizeOn = !state.personalizeOn;
-      if(!state.personalizeOn) state.showSaveForm = false;
+      state.personalizeOn = true;
+      state.presetOn = false;
+      state.editingPresets = false;
       render();
     });
     if(el = document.getElementById("newPresetBtn")) el.addEventListener("click", function(){
@@ -1132,6 +1285,36 @@
         state.blockKind = btn.dataset.kind; state.chosenTargetId = null; render();
       });
     });
+    // v3.4 §C3b: alcance del evento (de la meta vs aparte)
+    document.querySelectorAll("[data-scope]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.eventScope = btn.dataset.scope; state.chosenTargetId = null; render();
+      });
+    });
+    if(el = document.getElementById("standaloneName")) el.addEventListener("input", function(){
+      state.standaloneName = this.value;                     // sin re-render: no se pierde el foco
+    });
+    if(el = document.getElementById("addMetaEventBtn")){
+      var dateInput = document.getElementById("newMetaEventDate");
+      var p = function(n){ return (n < 10 ? "0" : "") + n; };
+      var today = new Date();
+      if(dateInput) dateInput.value = today.getFullYear()+"-"+p(today.getMonth()+1)+"-"+p(today.getDate());
+      el.addEventListener("click", function(){
+        var nameInput = document.getElementById("newMetaEvent");
+        var name = nameInput ? nameInput.value.trim() : "";
+        if(!name){ if(nameInput) nameInput.focus(); return; }
+        var sgNow = supermetaById(state.chosenSupermetaId);
+        var goalNow = sgNow ? goalById(sgNow, state.chosenGoalId) : null;
+        if(!goalNow) return;
+        var when = dateInput && dateInput.value ? ("evento · " + dateInput.value) : "evento atemporal";
+        var ev = { id: uidShort("e"), name: name, when: when, date: dateInput ? (dateInput.value || null) : null, weight: 2 };
+        goalNow.eventos = goalNow.eventos || [];
+        goalNow.eventos.push(ev);
+        saveSupermetas();               // v3.4 §C3c: queda en la meta (y su calendario)
+        state.chosenTargetId = ev.id;   // y queda seleccionado para el bloque
+        render();
+      });
+    }
     document.querySelectorAll("[data-evento]").forEach(function(btn){
       btn.addEventListener("click", function(){ state.chosenTargetId = btn.dataset.evento; render(); });
     });
