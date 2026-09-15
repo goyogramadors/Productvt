@@ -545,3 +545,9 @@ Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09
 8. **Antimetas ocultas por defecto**; un botón las hace aparecer **bien pequeñas** (v3 §E8).
 9. **Botón "crear"** = hotkey, sin cambios (v3 §E9).
 10. **HUD decorativo**: Ajustes y amigos sin funcionalidad por ahora (v3 §F2). La Tienda no cambia en esta enmienda.
+
+
+### Añadido v3.1 (2026-09-14) — segunda pasada del creador
+
+Refinamientos posteriores a esta enmienda, registrados como **v3.1** en `03-requisitos/decisiones-tomadas.md` (§H–§K, autoridad vigente). Los puntos que tocan directamente a este documento:
+- I1: lunas orientadas hacia abajo con equidistancia. I2: reorden animado al soltar (sin teletransportes). I3: en foco, las metas orbitan pegadas al borde del planeta. I6/I7: plazo por meta/supermeta (máx. 1 año) e indicador % de tareas cumplidas. I8: título = nombre editable (mini lápiz) + % + botón de configuración al panel de gestión (J4).

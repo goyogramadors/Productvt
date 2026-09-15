@@ -1,0 +1,51 @@
+﻿{
+    "items_count":  3,
+    "saved_at_utc":  "2026-09-15T03:51:47.1899537Z",
+    "note":  "Snapshot de progreso del workspace Productvt",
+    "items":  [
+                  {
+                      "is_system":  false,
+                      "path":  "C:\\Users\\bcar3\\Desktop\\Productvt\\.cline",
+                      "type":  "dir",
+                      "size":  null,
+                      "is_hidden":  false,
+                      "created_utc":  null,
+                      "name":  ".cline",
+                      "modified_utc":  null,
+                      "attributes":  null
+                  },
+                  {
+                      "is_system":  false,
+                      "path":  "C:\\Users\\bcar3\\Desktop\\Productvt\\.cline\\progress_snapshot.json",
+                      "type":  "file",
+                      "size":  934,
+                      "is_hidden":  false,
+                      "created_utc":  "2026-09-15T03:51:10.9073783Z",
+                      "name":  "progress_snapshot.json",
+                      "modified_utc":  "2026-09-15T03:51:10.9073783Z",
+                      "attributes":  "Archive"
+                  },
+                  {
+                      "is_system":  false,
+                      "path":  "C:\\Users\\bcar3\\Desktop\\Productvt\\.cline\\progress_snapshot.ps1",
+                      "type":  "file",
+                      "size":  2237,
+                      "is_hidden":  false,
+                      "created_utc":  "2026-09-15T03:51:01.3053800Z",
+                      "name":  "progress_snapshot.ps1",
+                      "modified_utc":  "2026-09-15T03:51:38.3991949Z",
+                      "attributes":  "Archive"
+                  }
+              ],
+    "workspace":  "c:\\Users\\bcar3\\Desktop\\Productvt",
+    "project_markers":  {
+                            "pyproject_toml":  false,
+                            "package_json":  false,
+                            "docker_compose":  false,
+                            "cmake":  false,
+                            "cargo_toml":  false,
+                            "git_repo":  false,
+                            "requirements_txt":  false,
+                            "readme":  false
+                        }
+}

@@ -761,3 +761,9 @@ Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09
 3. **Exceso** (v3 §C4): al superar el objetivo el bloque **no se corta**; queda exceso en estadísticas; el puntaje se obtiene al llegar al tiempo necesario.
 4. **Bloque finalizado → cuadro en calendario** (v3 §D1–D3): creación automática del cuadro con las reglas de calendario implícito y precedencia de color de la enmienda v3 de `02-DOMINIO.md` (puntos 2 y 7).
 5. **Cronómetro inverso** (v3 §C5): sin cambios de máquina; la **antimeta** queda disponible como categoría invisible.
+
+
+### Añadido v3.1 (2026-09-14) — segunda pasada del creador
+
+Refinamientos posteriores a esta enmienda, registrados como **v3.1** en `03-requisitos/decisiones-tomadas.md` (§H–§K, autoridad vigente). Los puntos que tocan directamente a este documento:
+- H1–H4: paso 1 con dos toggles cuadrados no excluyentes (preset / personalizar), botón "Editar" para gestionar presets (descarta el progreso al volver a la selección por defecto), pasos con botones cuadrados que se desvanecen y comprimen al completarse, y botón final "**Iniciar bloque**". K1: no hay selección de categorías en ningún modo; el inverso usa solo la antimeta.

@@ -1286,3 +1286,9 @@ Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09
 6. **Antimeta**: `SuperGoal` con `isAntiGoal: true`; **sin puntaje**, solo contiene **eventos atemporales**, funciona como **categoría invisible** seleccionable desde el cronómetro inverso (v3 §A7, §C5).
 7. **Bloque → calendario** (v3 §D1): todo bloque al completarse genera un **`CalendarItem` cuadro** en el calendario vinculado, con calificación (`eventId` o `taskId` de la meta elegida, v3 §C3) para el registro exacto del tiempo.
 8. **Exceso sobre objetivo** (v3 §C4): al superar el `targetSeconds` de una tarea el bloque **no se corta**; el exceso se registra en estadísticas y el **puntaje se otorga al llegar al objetivo** (no escala con el exceso).
+
+
+### Añadido v3.1 (2026-09-14) — segunda pasada del creador
+
+Refinamientos posteriores a esta enmienda, registrados como **v3.1** en `03-requisitos/decisiones-tomadas.md` (§H–§K, autoridad vigente). Los puntos que tocan directamente a este documento:
+- K1: **no existe la entidad Categoría** — todo se gestiona en metas/supermetas y calendarios. J1/J2: `SuperGoal` referencia `calendarId` (cuestionario obligatorio) y `Meta` define `color` propio, `deadline` (máx. 1 año, mín. 1 segundo, I6) y `tareas[]` (base del % de cumplimiento, I7). K4/K5: nuevos campos de evento `invisible` y recurrencia (`semanal` / `cada 2 semanas` / `cada X semanas` con fecha de término).

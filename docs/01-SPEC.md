@@ -529,3 +529,9 @@ Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09
 4. **Cronómetro conectado al resto del producto** (v3 §C): el inicio de sesión de estudio se desglosa por pasos (preset → supermeta → meta → tarea/evento) y el tiempo registrado alimenta las estadísticas de cumplimiento de metas; lo mismo conecta a la galaxia de la pantalla de inicio.
 5. **Todo bloque finalizado se crea como cuadro en el calendario** vinculado a la supermeta (v3 §D).
 6. **HUD de la galaxia (Ajustes, amigos)**: por ahora solo decoración (v3 §F2).
+
+
+### Añadido v3.1 (2026-09-14) — segunda pasada del creador
+
+Refinamientos posteriores a esta enmienda, registrados como **v3.1** en `03-requisitos/decisiones-tomadas.md` (§H–§K, autoridad vigente). Los puntos que tocan directamente a este documento:
+- H1–H4 (flujo del cronómetro: paso 1 no excluyente con toggles cuadrados, botón "Editar" de presets, "Iniciar bloque"), I4/I6–I8 (popup crear con 3 opciones, plazos máx. 1 año, % de tareas, título editable), J1–J6 (cuestionario de creación, mínimo una meta por supermeta, confirmaciones, mover metas, gestión de calendarios), K1–K5 (**las categorías dejan de existir**, sistema de 3 colores con etiquetas verticales, panel de creación de evento con recurrencias y evento invisible).

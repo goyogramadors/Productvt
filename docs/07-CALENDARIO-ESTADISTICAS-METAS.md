@@ -854,3 +854,9 @@ Fuente y autoridad: `03-requisitos/decisiones-tomadas.md` sección **v3 (2026-09
 6. **Jerarquía en Configuración** (v3 §F1): pantalla con la jerarquía completa de supermetas y metas, **editable** y con **eliminación**.
 7. **HUD de la galaxia decorativo** (v3 §F2): Ajustes y amigos sin funcionalidad real por ahora.
 8. **Impacto en rollup de estadísticas** (§3.5 de este documento): metas/supermetas ya no tienen `categoryId` (v3 §A2) — el rollup por categoría debe rediseñarse hacia **meta/supermeta/calendario**; el exceso de bloques (v3 §C4) aparece como métrica de estadísticas. Pendiente de redacción fina en la propagación orgánica de este documento.
+
+
+### Añadido v3.1 (2026-09-14) — segunda pasada del creador
+
+Refinamientos posteriores a esta enmienda, registrados como **v3.1** en `03-requisitos/decisiones-tomadas.md` (§H–§K, autoridad vigente). Los puntos que tocan directamente a este documento:
+- K3: sistema de 3 colores con etiquetas verticales (meta / calendario / supermeta; un solo color en eventos inversos). K4/K5: panel de creación de evento con evento invisible y recurrencias (semanal, cada 2, cada X semanas con término). J6: crear/eliminar calendarios desde el panel y desde Configuración. J5: eliminar supermeta mata sus metas; mover meta entre supermetas.
