@@ -76,6 +76,18 @@
     border: 1px solid var(--rule-strong); border-radius: 7px; padding: 6px 10px; width: 140px;
   }
   .search-hit{ outline: 2px solid var(--danger); outline-offset: -1px; }
+  /* ---- enmienda v3 §B4: día actual destacado ---- */
+  .month-day.today{ box-shadow: inset 0 0 0 2px var(--accent); }
+  .month-day.today .num{ color: var(--accent); font-weight: 700; }
+  .tl-day-head.today{ color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .tl-day-head .hoy{
+    font-family: "IBM Plex Mono", monospace; font-size: 9px; letter-spacing: .06em;
+    color: var(--accent-ink); background: var(--accent); border-radius: 8px; padding: 1px 6px; vertical-align: 1px;
+  }
+  /* ---- enmienda v3 §B3: evento arrastrable ---- */
+  .tl-event{ cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .tl-event.dragging{ opacity: .85; cursor: grabbing; box-shadow: 0 4px 12px rgba(0,0,0,.25); z-index: 5; }
+  .tl-day-col.drag-over{ background: var(--accent-soft); }
   .topbar{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
   .layersToggleBtn{ display: none; }
   @media (max-width: 760px){ .layersToggleBtn{ display: inline-flex; } }
@@ -326,6 +338,69 @@
   function saveUserEvents(){ try{ localStorage.setItem(EVENTS_KEY, JSON.stringify(userEvents)); }catch(e){} }
   var userEvents = loadUserEvents();
 
+  // ---- enmienda v3 §B3 — arrastre de eventos ----
+  // El arrastre persiste por id (incluye los eventos demo deterministas, vía overrides).
+  var OVERRIDES_KEY = "productvt-calendario-drag-overrides-v1";
+  function loadOverrides(){ try{ return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; }catch(e){ return {}; } }
+  function saveOverrides(){ try{ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides)); }catch(e){} }
+  var overrides = loadOverrides();
+  var dragJustMoved = false; // evita que el clic posterior al arrastre abra el panel del día
+  function startEventDrag(el, ev, col){
+    ev.preventDefault();
+    var startY = ev.clientY, startX = ev.clientX;
+    var origTop = parseFloat(el.style.top) || 0;
+    var moved = false;
+    el.classList.add("dragging");
+    function onMove(e2){
+      var dy = e2.clientY - startY;
+      if(Math.abs(dy) > 3 || Math.abs(e2.clientX - startX) > 3) moved = true;
+      var newTop = Math.max(0, origTop + dy);
+      newTop = Math.round(newTop / 11) * 11; // snap 15 min (44 px por hora)
+      el.style.top = newTop + "px";
+      el.dataset.newTop = String(newTop);
+      document.querySelectorAll(".tl-day-col.drag-over").forEach(function(c){ c.classList.remove("drag-over"); });
+      var over = document.elementFromPoint(e2.clientX, e2.clientY);
+      var targetCol = over && over.closest ? over.closest(".tl-day-col") : null;
+      if(targetCol) targetCol.classList.add("drag-over");
+      el.dataset.newDate = targetCol ? targetCol.dataset.date : col.dataset.date;
+    }
+    function onUp(){
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      el.classList.remove("dragging");
+      document.querySelectorAll(".tl-day-col.drag-over").forEach(function(c){ c.classList.remove("drag-over"); });
+      if(!moved) return;
+      dragJustMoved = true;
+      setTimeout(function(){ dragJustMoved = false; }, 350);
+      var newTop = Number(el.dataset.newTop || 0);
+      var newStart = Math.round(newTop / 44 * 60); // minutos desde las 07:00
+      var startHour = 7, endHour = 23;
+      newStart = Math.max(0, Math.min((endHour - startHour) * 60 - 15, newStart)) + startHour * 60;
+      var id = el.dataset.id;
+      var dateChanged = el.dataset.newDate && el.dataset.newDate !== col.dataset.date;
+      if(dateChanged){
+        // mover de día: si es un evento del usuario, se reubica; si es demo, se clona como evento del usuario
+        var src = userEvents.filter(function(e){ return e.id === id; })[0];
+        var startMin = overrides[id] !== undefined ? overrides[id] : (src ? src.startMin : null);
+        var fromTime = startMin !== null ? minutesToHHMM(startMin) : "09:00";
+        userEvents.push({
+          id: "u" + Date.now(), date: el.dataset.newDate, title: el.textContent.replace(/ · \d\d:\d\d$/, ""),
+          metaId: src ? src.metaId : null, capaId: src ? src.capaId : null,
+          time: fromTime, startMin: startMin !== null ? startMin : 540
+        });
+        if(src){ userEvents = userEvents.filter(function(e){ return e.id !== id; }); saveUserEvents(); }
+        else { overrides[id] = -1; saveOverrides(); } // -1 = ocultar el demo original
+        render();
+        return;
+      }
+      overrides[id] = newStart;
+      saveOverrides();
+      render();
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
   function pad(n){ return String(n).padStart(2,"0"); }
   function iso(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
   function isoOf(d){ return iso(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -386,6 +461,7 @@
     var sessions = out.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
     var custom = userEvents.filter(function(e){ return e.date >= fromIso && e.date <= toIso; });
     return sessions.concat(custom).filter(function(e){
+      if(overrides[e.id] === -1) return false; // v3 §B3: evento demo reubicado como copia de usuario
       if(e.metaId) return isVisible(layerIdForMeta(e.metaId));
       if(e.capaId) return isVisible("capa:"+e.capaId);
       return true;
@@ -578,7 +654,7 @@
       var isToday = ds === isoOf(today);
       var slots = ""; for(var h=startHour; h<=endHour; h++) slots += '<div class="tl-slot" data-hour="'+h+'"></div>';
       var eventsHtml = evts.map(function(e){
-        var startMin = e.startMin !== undefined ? e.startMin : (e.time ? Number(e.time.split(":")[0])*60+Number(e.time.split(":")[1]) : startHour*60);
+        var startMin = overrides[e.id] !== undefined ? overrides[e.id] : (e.startMin !== undefined ? e.startMin : (e.time ? Number(e.time.split(":")[0])*60+Number(e.time.split(":")[1]) : startHour*60));
         var dur = e.minutes || 25;
         var top = (startMin - startHour*60) / 60 * 44;
         var height = Math.max(20, dur/60*44);
@@ -597,15 +673,23 @@
         }
       }
       colsHtml += '<div class="tl-day-col" data-date="'+ds+'">' +
-        '<div class="tl-day-head'+(isToday?" today":"")+'">'+WEEKDAYS[(d.getDay()+6)%7]+' '+d.getDate()+'</div>' +
+        '<div class="tl-day-head'+(isToday?" today":"")+'">'+WEEKDAYS[(d.getDay()+6)%7]+' '+d.getDate()+(isToday?' <span class="hoy">HOY</span>':'')+'</div>' +
         '<div style="position:relative">'+slots+eventsHtml+nowLine+'</div></div>';
     });
 
     viewRoot.innerHTML = '<div class="timeline"><div class="tl-hours"><div class="tl-hour-label" style="height:26px"></div>'+hourLabels+'</div>' +
       '<div class="tl-days" style="grid-template-columns:repeat('+numDays+',1fr)">' + colsHtml + '</div></div>';
 
+    // v3 §B3: presionar y arrastrar mueve el evento (hora con snap de 15 min, incluso entre días)
+    viewRoot.querySelectorAll(".tl-event").forEach(function(el){
+      el.addEventListener("pointerdown", function(ev){
+        var col = el.closest(".tl-day-col");
+        startEventDrag(el, ev, col);
+      });
+    });
     viewRoot.querySelectorAll(".tl-day-col").forEach(function(col){
       col.addEventListener("click", function(ev){
+        if(dragJustMoved) return;
         if(ev.target.closest(".tl-event")) return;
         openDaySheet(col.dataset.date);
       });
@@ -617,10 +701,11 @@
     var evts = eventsForRange(d,d);
     var itemsHtml = evts.length ? evts.map(function(e){
       var stripe = stripeForEvent(e);
+      var shownStart = overrides[e.id] !== undefined ? overrides[e.id] : e.startMin;
       var dotStyle = "background:"+colorForEvent(e) + (stripe ? ";box-shadow:0 0 0 2px "+stripe : "");
       return '<div class="item"><span class="idot" style="'+dotStyle+'"></span>' +
         '<span class="itxt">'+labelForEvent(e)+(e.minutes?" · "+e.minutes+" min":"")+'</span>' +
-        '<span class="itime">'+(e.startMin!==undefined?minutesToHHMM(e.startMin):(e.time||""))+'</span></div>';
+        '<span class="itime">'+(shownStart!==undefined?minutesToHHMM(shownStart):(e.time||""))+'</span></div>';
     }).join("") : '<p class="empty">Nada este día.</p>';
     var metaOptions = METAS.map(function(m){ return '<option value="meta:'+m.id+'">'+(m.parentGoalId?"— ":"")+m.name+'</option>'; }).join("");
     var capaOptions = CAPAS.map(function(l){ return '<option value="capa:'+l.id+'">'+l.name+' (capa)</option>'; }).join("");
@@ -638,6 +723,7 @@
       '<button class="btn" id="addEvBtn">+ Agregar</button>' +
       '</div>';
     document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.addEventListener("pointerdown", function(ev){ if(ev.target === wrap) wrap.remove(); }); // v3 §B2: presionar fuera cierra
     wrap.querySelector("#closeDay").addEventListener("click", function(){ wrap.remove(); });
     wrap.querySelector("#addEvBtn").addEventListener("click", function(){
       var title = wrap.querySelector("#evTitle").value.trim();
@@ -693,6 +779,7 @@
         '<button class="choice-card" id="goCreateFromCal" type="button"><span class="ic">✺</span><span><strong>Crear meta / iniciar bloque</strong><span>Abre el mismo panel de Inicio</span></span></button>' +
       '</div></div>';
     document.getElementById("sheetRoot").appendChild(wrap);
+    wrap.addEventListener("pointerdown", function(ev){ if(ev.target === wrap) wrap.remove(); }); // v3 §B2: presionar fuera cierra
     wrap.querySelector("#closeFab").addEventListener("click", function(){ wrap.remove(); });
     wrap.querySelector("#goEventHere").addEventListener("click", function(){ wrap.remove(); openDaySheet(isoOf(cursorDate)); });
     wrap.querySelector("#goCreateFromCal").addEventListener("click", function(){ window.location.href = NAV_URLS.inicio + "?action=create"; });

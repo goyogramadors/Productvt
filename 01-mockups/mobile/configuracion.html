@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuración</title>
+<!-- Mockup de la pestaña Configuración (skin "Papel", docs/06-DISENO-UI.md).
+     Secciones según src/features/settings/ (Fase 3-4): categorías, presets,
+     sonidos y frase de cancelación. Persistencia local vía localStorage. -->
+<style>
+  :root{
+    --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
+    --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A; --danger-soft: #E9D6CF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+      --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --danger-soft: #33221D;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+    --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+    --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871; --danger-soft: #33221D;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button{ font: inherit; cursor: pointer; }
+  input{ font: inherit; }
+  .shell{ max-width: 420px; margin: 0 auto; min-height: 100vh; padding: 0 0 28px; }
+  .topbar{ display: flex; align-items: baseline; justify-content: space-between; padding: 18px 20px 6px; }
+  .topbar h1{ margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 500; font-size: 22px; }
+  .topbar .sub{ font-size: 12px; color: var(--muted); }
+  .section{ margin: 14px 16px 0; border: 1px solid var(--rule-strong); border-radius: 12px; background: var(--paper-raised); overflow: hidden; }
+  .section > h2{
+    margin: 0; padding: 12px 14px 10px; font-family: "Fraunces", Georgia, serif;
+    font-size: 14.5px; font-weight: 500; border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section > h2 .hint{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted); font-weight: 400; }
+  .section .body{ padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .row{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .glabel{ font-size: 13.5px; }
+  .glabel small{ display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .toggle{
+    width: 44px; height: 26px; border-radius: 20px; border: 1px solid var(--rule-strong);
+    background: var(--paper); position: relative; padding: 0; flex: none;
+  }
+  .toggle .knob{
+    position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--muted); transition: left .18s ease, background .18s ease;
+  }
+  .toggle[aria-pressed="true"]{ background: var(--accent-soft); border-color: var(--accent); }
+  .toggle[aria-pressed="true"] .knob{ left: 21px; background: var(--accent); }
+  .chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip{
+    border: 1px solid var(--rule-strong); background: var(--paper); color: var(--ink);
+    border-radius: 20px; padding: 7px 13px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip .sw{ width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .chip .x{ color: var(--muted); font-size: 13px; padding-left: 2px; }
+  .chip .x:hover{ color: var(--danger); }
+  .chip.add{ border-style: dashed; color: var(--muted); }
+  .item{ display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--rule); }
+  .item:last-child{ border-bottom: none; }
+  .item .name{ font-size: 13.5px; }
+  .item .name small{ color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; display: block; margin-top: 1px; }
+  .mini-btn{
+    border: 1px solid var(--rule-strong); background: var(--paper); color: var(--ink);
+    border-radius: 8px; padding: 5px 10px; font-size: 12px;
+  }
+  .mini-btn.danger{ color: var(--danger); border-color: var(--danger); }
+  .form{ display: flex; flex-direction: column; gap: 9px; border: 1px dashed var(--rule-strong); border-radius: 10px; padding: 11px; background: var(--paper); }
+  .form input{
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong);
+    border-radius: 8px; padding: 8px 10px; font-size: 13.5px; width: 100%;
+  }
+  .form .two{ display: flex; gap: 8px; }
+  .form label{ font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .palette{ display: flex; gap: 6px; flex-wrap: wrap; }
+  .palette button{ width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
+  .palette button[aria-pressed="true"]{ border-color: var(--ink); }
+  .phrase{
+    font-size: 13.5px; line-height: 1.5; padding: 10px 12px;
+    border-left: 3px solid var(--danger); background: var(--danger-soft); border-radius: 0 8px 8px 0;
+  }
+  .phrase input{ width: 100%; background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .note{ margin: 14px 16px 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+  .save-toast{
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: var(--accent-ink); font-size: 12.5px;
+    padding: 9px 16px; border-radius: 20px; transition: transform .25s ease; pointer-events: none;
+  }
+  .save-toast.show{ transform: translateX(-50%) translateY(0); }
+  .hidden{ display: none !important; }
+  /* ---- Jerarquía supermetas/metas (enmienda v3 §F1) ---- */
+  .tree{ display: flex; flex-direction: column; gap: 6px; }
+  .sg-node{ border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); padding: 9px 10px; }
+  .sg-row{ display: flex; align-items: center; gap: 8px; }
+  .sg-row .planet{ width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: inset -3px -3px 0 rgba(0,0,0,.18); }
+  .sg-row .name{ font-size: 13.5px; font-weight: 600; flex: 1; }
+  .sg-row .anti-tag{
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; color: var(--danger);
+    border: 1px solid var(--danger); border-radius: 10px; padding: 1px 7px;
+  }
+  .sg-actions{ display: flex; gap: 6px; }
+  .goal-row{ display: flex; align-items: center; gap: 7px; padding: 5px 0 0 22px; }
+  .goal-row .moon{ width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+  .goal-row .name{ font-size: 12.5px; flex: 1; color: var(--ink); }
+  .goal-row input{ font-size: 12.5px; background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 3px 7px; width: 130px; }
+  .mini-btn.xs{ padding: 3px 8px; font-size: 11px; }
+  .add-goal-row{ display: flex; gap: 6px; padding: 7px 0 0 22px; }
+  .add-goal-row input{ flex: 1; font-size: 12.5px; background: var(--paper-raised); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 4px 8px; }
+  .anti-hint{ font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <h1>Configuración</h1>
+    <span class="sub">cambios guardados al instante</span>
+  </div>
+
+  <section class="section">
+    <h2>Jerarquía <span class="hint">supermetas → metas</span></h2>
+    <div class="body">
+      <div class="tree" id="hierarchyTree"></div>
+      <button class="chip add" id="newSuperBtn" type="button">+ Nueva supermeta</button>
+      <div class="form hidden" id="newSuperForm">
+        <div>
+          <label>Nombre de la supermeta</label>
+          <input type="text" id="superName" maxlength="28" placeholder="p. ej. Título">
+        </div>
+        <div class="row">
+          <div class="glabel">Es antimeta<small>sin puntaje; solo eventos atemporales (enmienda v3 §A7)</small></div>
+          <button class="toggle" id="superAnti" aria-pressed="false" type="button"><span class="knob"></span></button>
+        </div>
+        <div class="row">
+          <button class="mini-btn" id="superCancel" type="button">Cancelar</button>
+          <button class="mini-btn" id="superSave" type="button">Crear</button>
+        </div>
+      </div>
+      <p class="anti-hint">Una meta puede pertenecer a más de una supermeta (v3 §A3). Las supermetas se asocian a un calendario, no a categorías (v3 §A2): la supermeta sin calendario crea uno propio con su nombre al primer bloque.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Categorías <span class="hint">solo del cronómetro inverso</span></h2>
+    <div class="body">
+      <div class="chips" id="catChips"></div>
+      <button class="chip add" id="newCatBtn" type="button">+ Nueva categoría</button>
+      <div class="form hidden" id="newCatForm">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="catName" maxlength="24" placeholder="p. ej. Cálculo">
+        </div>
+        <div>
+          <label>Color</label>
+          <div class="palette" id="catPalette"></div>
+        </div>
+        <div class="row">
+          <button class="mini-btn" id="catCancel" type="button">Cancelar</button>
+          <button class="mini-btn" id="catSave" type="button">Crear</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Presets <span class="hint">formatos de sesión</span></h2>
+    <div class="body">
+      <div id="presetList"></div>
+      <button class="chip add" id="newPresetBtn" type="button">+ Nuevo preset</button>
+      <div class="form hidden" id="newPresetForm">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="presetName" maxlength="24" placeholder="p. ej. Bloques largos">
+        </div>
+        <div class="two">
+          <div>
+            <label>Estudio (min)</label>
+            <input type="number" id="pStudy" min="5" max="180" value="25">
+          </div>
+          <div>
+            <label>Descanso corto</label>
+            <input type="number" id="pShort" min="1" max="60" value="5">
+          </div>
+        </div>
+        <div class="two">
+          <div>
+            <label>Descanso largo</label>
+            <input type="number" id="pLong" min="5" max="90" value="20">
+          </div>
+          <div>
+            <label>Largo cada N bloques</label>
+            <input type="number" id="pCycles" min="2" max="8" value="4">
+          </div>
+        </div>
+        <div class="row">
+          <button class="mini-btn" id="presetCancel" type="button">Cancelar</button>
+          <button class="mini-btn" id="presetSave" type="button">Crear</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Sonidos</h2>
+    <div class="body">
+      <div class="row">
+        <div class="glabel">Campana al terminar bloque<small>suena cuando el bloque de estudio llega a cero</small></div>
+        <button class="toggle" id="sndBell" aria-pressed="true" type="button" aria-label="Campana al terminar bloque"><span class="knob"></span></button>
+      </div>
+      <div class="row">
+        <div class="glabel">Alarma de «toca estudiar»<small>avisa cuando el descanso terminó</small></div>
+        <button class="toggle" id="sndAlarm" aria-pressed="true" type="button" aria-label="Alarma toca estudiar"><span class="knob"></span></button>
+      </div>
+      <div class="row">
+        <div class="glabel">Tic-tac en pantalla<small>feedback visual del conteo (sin audio)</small></div>
+        <button class="toggle" id="sndTick" aria-pressed="false" type="button" aria-label="Tic-tac"><span class="knob"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Frase de cancelación</h2>
+    <div class="body">
+      <div class="phrase" id="phraseView">
+        <span id="phraseText"></span>
+        <div class="row" style="margin-top:8px">
+          <button class="mini-btn" id="phraseEdit" type="button">Editar</button>
+        </div>
+      </div>
+      <div class="phrase hidden" id="phraseEditBox">
+        <input type="text" id="phraseInput" maxlength="120">
+        <div class="row" style="margin-top:8px">
+          <button class="mini-btn" id="phraseCancel" type="button">Cancelar</button>
+          <button class="mini-btn" id="phraseSave" type="button">Guardar</button>
+        </div>
+      </div>
+      <span style="font-size:11.5px;color:var(--muted)">Se muestra en el panel de doble confirmación antes de cancelar la sesión.</span>
+    </div>
+  </section>
+
+  <p class="note">Cuenta y sincronización: Firebase (plan Spark). La sincronización dominante/espectador del cronómetro vive en cada dispositivo — esta pestaña no expone controles de ella.</p>
+</div>
+<div class="save-toast" id="toast">Guardado</div>
+<script>
+(function(){
+  var STORE_KEY = "productvt.settings.mockup.v1";
+  var PALETTE = ["#3A6B54","#2E7B84","#B9812E","#6B8F71","#8C5A7A","#C0672B","#4A6FA5","#9C4A3A"];
+  var data = load();
+  var toast = document.getElementById("toast");
+  var toastTimer = null;
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {
+      cats: [
+        { name: "Matemática", color: PALETTE[0] },
+        { name: "Lectura",    color: PALETTE[1] },
+        { name: "Idiomas",    color: PALETTE[2] }
+      ],
+      presets: [
+        { name: "Clásico 25/5", study: 25, short: 5,  long: 20, cycles: 4 },
+        { name: "Largo 50/10",  study: 50, short: 10, long: 30, cycles: 3 }
+      ],
+      supermetas: [
+        { name: "Título", anti: false, color: PALETTE[0], goals: ["Ramificación principal"] },
+        { name: "Antimeta", anti: true, color: PALETTE[7], goals: [] }
+      ],
+      sounds: { bell: true, alarm: true, tick: false },
+      phrase: "¿Seguro que quieres abandonar? Todo tu progreso de esta sesión se perderá."
+    };
+  }
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }catch(e){}
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove("show"); }, 1400);
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v || min)); }
+
+  // ---- Categorías ----
+  var catChips = document.getElementById("catChips");
+  function renderCats(){
+    catChips.innerHTML = data.cats.map(function(c, i){
+      return '<span class="chip">' +
+        '<span class="sw" style="background:'+esc(c.color)+'"></span>' + esc(c.name) +
+        '<button class="x" data-cat="'+i+'" type="button" aria-label="Eliminar '+esc(c.name)+'">×</button></span>';
+    }).join("");
+    catChips.querySelectorAll(".x").forEach(function(b){
+      b.addEventListener("click", function(){
+        data.cats.splice(Number(b.dataset.cat), 1);
+        save(); renderCats();
+      });
+    });
+  }
+  var newCatForm = document.getElementById("newCatForm");
+  var catPalette = document.getElementById("catPalette");
+  var chosenColor = PALETTE[0];
+  function renderPalette(){
+    catPalette.innerHTML = PALETTE.map(function(c){
+      return '<button type="button" style="background:'+c+'" data-c="'+c+'" aria-pressed="'+(c===chosenColor)+'" aria-label="Color '+c+'"></button>';
+    }).join("");
+    catPalette.querySelectorAll("button").forEach(function(b){
+      b.addEventListener("click", function(){ chosenColor = b.dataset.c; renderPalette(); });
+    });
+  }
+  document.getElementById("newCatBtn").addEventListener("click", function(){
+    newCatForm.classList.remove("hidden");
+    renderPalette();
+    document.getElementById("catName").focus();
+  });
+  document.getElementById("catCancel").addEventListener("click", function(){ newCatForm.classList.add("hidden"); });
+  document.getElementById("catSave").addEventListener("click", function(){
+    var name = document.getElementById("catName").value.trim();
+    if(!name) return;
+    data.cats.push({ name: name, color: chosenColor });
+    document.getElementById("catName").value = "";
+    newCatForm.classList.add("hidden");
+    save(); renderCats();
+  });
+
+  // ---- Presets ----
+  var presetList = document.getElementById("presetList");
+  function renderPresets(){
+    presetList.innerHTML = data.presets.map(function(p, i){
+      return '<div class="item"><div class="name">' + esc(p.name) +
+        '<small>' + p.study + " / " + p.short + " / " + p.long + " min · largo cada " + p.cycles + '</small></div>' +
+        '<button class="mini-btn danger" data-preset="'+i+'" type="button">Eliminar</button></div>';
+    }).join("");
+    presetList.querySelectorAll("[data-preset]").forEach(function(b){
+      b.addEventListener("click", function(){
+        data.presets.splice(Number(b.dataset.preset), 1);
+        save(); renderPresets();
+      });
+    });
+  }
+  var newPresetForm = document.getElementById("newPresetForm");
+  document.getElementById("newPresetBtn").addEventListener("click", function(){
+    newPresetForm.classList.remove("hidden");
+    document.getElementById("presetName").focus();
+  });
+  document.getElementById("presetCancel").addEventListener("click", function(){ newPresetForm.classList.add("hidden"); });
+  document.getElementById("presetSave").addEventListener("click", function(){
+    var name = document.getElementById("presetName").value.trim();
+    if(!name) return;
+    data.presets.push({
+      name: name,
+      study: clamp(Number(document.getElementById("pStudy").value), 5, 180),
+      short: clamp(Number(document.getElementById("pShort").value), 1, 60),
+      long: clamp(Number(document.getElementById("pLong").value), 5, 90),
+      cycles: clamp(Number(document.getElementById("pCycles").value), 2, 8)
+    });
+    document.getElementById("presetName").value = "";
+    newPresetForm.classList.add("hidden");
+    save(); renderPresets();
+  });
+
+  // ---- Sonidos ----
+  function wireToggle(id, key){
+    var btn = document.getElementById(id);
+    btn.setAttribute("aria-pressed", String(!!data.sounds[key]));
+    btn.addEventListener("click", function(){
+      data.sounds[key] = !data.sounds[key];
+      btn.setAttribute("aria-pressed", String(data.sounds[key]));
+      save();
+    });
+  }
+  wireToggle("sndBell", "bell");
+  wireToggle("sndAlarm", "alarm");
+  wireToggle("sndTick", "tick");
+
+  // ---- Frase de cancelación ----
+  var phraseText = document.getElementById("phraseText");
+  var phraseView = document.getElementById("phraseView");
+  var phraseEditBox = document.getElementById("phraseEditBox");
+  var phraseInput = document.getElementById("phraseInput");
+  phraseText.textContent = data.phrase;
+  document.getElementById("phraseEdit").addEventListener("click", function(){
+    phraseView.classList.add("hidden");
+    phraseEditBox.classList.remove("hidden");
+    phraseInput.value = data.phrase;
+    phraseInput.focus();
+  });
+  document.getElementById("phraseCancel").addEventListener("click", function(){
+    phraseEditBox.classList.add("hidden");
+    phraseView.classList.remove("hidden");
+  });
+  document.getElementById("phraseSave").addEventListener("click", function(){
+    var v = phraseInput.value.trim();
+    if(v){ data.phrase = v; phraseText.textContent = v; save(); }
+    phraseEditBox.classList.add("hidden");
+    phraseView.classList.remove("hidden");
+  });
+
+  // ---- Jerarquía supermetas/metas (v3 §F1) ----
+  var treeEl = document.getElementById("hierarchyTree");
+  var editingGoal = null; // { sg, gi }
+  function renderTree(){
+    treeEl.innerHTML = data.supermetas.map(function(sg, si){
+      var goals = sg.goals.map(function(g, gi){
+        var isEditing = editingGoal && editingGoal.sg === si && editingGoal.gi === gi;
+        return '<div class="goal-row"><span class="moon"></span>' +
+          (isEditing
+            ? '<input type="text" data-goal-input="'+si+':'+gi+'" value="'+esc(g)+'" maxlength="40">'
+            : '<span class="name">'+esc(g)+'</span>') +
+          '<button class="mini-btn xs" data-goal-edit="'+si+':'+gi+'" type="button">' + (isEditing ? "OK" : "Renombrar") + '</button>' +
+          '<button class="mini-btn xs danger" data-goal-del="'+si+':'+gi+'" type="button">×</button></div>';
+      }).join("");
+      return '<div class="sg-node">' +
+        '<div class="sg-row">' +
+          '<span class="planet" style="background:'+esc(sg.color||PALETTE[0])+'"></span>' +
+          '<span class="name">'+esc(sg.name)+'</span>' +
+          (sg.anti ? '<span class="anti-tag">antimeta</span>' : '') +
+          '<span class="sg-actions">' +
+            '<button class="mini-btn xs" data-sg-del="'+si+'" type="button">Eliminar</button>' +
+          '</span>' +
+        '</div>' + goals +
+        '<div class="add-goal-row"><input type="text" data-new-goal="'+si+'" placeholder="Nueva meta…"><button class="mini-btn xs" data-goal-add="'+si+'" type="button">+</button></div>' +
+      '</div>';
+    }).join("") || '<span style="font-size:12.5px;color:var(--muted)">Sin supermetas aún.</span>';
+
+    treeEl.querySelectorAll("[data-goal-edit]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var parts = b.dataset.goalEdit.split(":"), si = +parts[0], gi = +parts[1];
+        var wasEditing = editingGoal && editingGoal.sg === si && editingGoal.gi === gi;
+        editingGoal = wasEditing ? null : { sg: si, gi: gi };
+        renderTree();
+        if(wasEditing) return;
+        var inp = treeEl.querySelector("[data-goal-input]");
+        if(inp){ inp.focus(); inp.select();
+          inp.addEventListener("keydown", function(ev){ if(ev.key === "Enter") commitGoal(si, gi, inp.value); });
+        }
+      });
+    });
+    treeEl.querySelectorAll("[data-goal-input]").forEach(function(inp){
+      inp.addEventListener("blur", function(){
+        var parts = inp.dataset.goalInput.split(":");
+        commitGoal(+parts[0], +parts[1], inp.value);
+      });
+    });
+    function commitGoal(si, gi, val){
+      var v = (val||"").trim();
+      editingGoal = null;
+      if(v){ data.supermetas[si].goals[gi] = v; save(); }
+      renderTree();
+    }
+    treeEl.querySelectorAll("[data-goal-del]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var parts = b.dataset.goalDel.split(":");
+        data.supermetas[+parts[0]].goals.splice(+parts[1], 1);
+        save(); renderTree();
+      });
+    });
+    treeEl.querySelectorAll("[data-goal-add]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var si = +b.dataset.goalAdd;
+        var inp = treeEl.querySelector('[data-new-goal="'+si+'"]');
+        var v = (inp.value||"").trim();
+        if(!v) return;
+        data.supermetas[si].goals.push(v);
+        save(); renderTree();
+      });
+    });
+    treeEl.querySelectorAll("[data-sg-del]").forEach(function(b){
+      b.addEventListener("click", function(){
+        data.supermetas.splice(+b.dataset.sgDel, 1);
+        save(); renderTree();
+      });
+    });
+    treeEl.querySelectorAll("[data-new-goal]").forEach(function(inp){
+      inp.addEventListener("keydown", function(ev){
+        if(ev.key !== "Enter") return;
+        var si = +inp.dataset.newGoal, v = (inp.value||"").trim();
+        if(!v) return;
+        data.supermetas[si].goals.push(v);
+        save(); renderTree();
+      });
+    });
+  }
+  var newSuperForm = document.getElementById("newSuperForm");
+  document.getElementById("newSuperBtn").addEventListener("click", function(){
+    newSuperForm.classList.remove("hidden");
+    document.getElementById("superName").focus();
+  });
+  document.getElementById("superCancel").addEventListener("click", function(){ newSuperForm.classList.add("hidden"); });
+  document.getElementById("superAnti").addEventListener("click", function(){
+    var on = this.getAttribute("aria-pressed") === "true";
+    this.setAttribute("aria-pressed", String(!on));
+  });
+  document.getElementById("superSave").addEventListener("click", function(){
+    var name = document.getElementById("superName").value.trim();
+    if(!name) return;
+    data.supermetas.push({
+      name: name,
+      anti: document.getElementById("superAnti").getAttribute("aria-pressed") === "true",
+      color: PALETTE[data.supermetas.length % PALETTE.length],
+      goals: []
+    });
+    document.getElementById("superName").value = "";
+    document.getElementById("superAnti").setAttribute("aria-pressed", "false");
+    newSuperForm.classList.add("hidden");
+    save(); renderTree();
+  });
+
+  renderCats();
+  renderPresets();
+  renderTree();
+})();
+</script>
+</body>
+</html>

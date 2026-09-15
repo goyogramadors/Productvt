@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constelación de Metas v2</title>
+<!-- Mockup interactivo de la galaxia — enmienda v3 §E (decisiones-tomadas.md).
+     Comportamiento: solo supermetas (planetas) y metas (mini-planetas con enlaces,
+     sensación tipo Obsidian Graph View §E1–E2); proporción considerable con metas
+     como estrellas desde la vista general (§E3); orden circular por creación en
+     sentido horario con "Restablecer" (§E4); arrastre libre y acomodo coordinado
+     al soltar, empujando a las demás (§E5); vista de foco a pantalla completa con
+     el planeta ocupando la mitad de la pantalla (§E6); posiciones persistidas en
+     localStorage salvo reseteo (§E7); antimetas ocultas con botón (§E8); HUD
+     decorativo (§F2) y botón crear como hotkey (§E9). -->
+<style>
+  :root{
+    --paper: #EFEDE5; --paper-raised: #FAF9F3; --ink: #20241E; --muted: #6E7368;
+    --accent: #3A6B54; --accent-ink: #F3F7F1; --accent-soft: #DCE6DC;
+    --rule: #D5D1C1; --rule-strong: #B9B4A0; --danger: #9C4A3A;
+    --hud-bg: #16213F; --hud-bg-2: #223462; --hud-ink: #F3F1E7;
+    --cr-gold: #FFB627;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper: #14170F; --paper-raised: #1B1F16; --ink: #E9E7DC; --muted: #949A88;
+      --accent: #7BB596; --accent-ink: #10241A; --accent-soft: #223429;
+      --rule: #2B3225; --rule-strong: #3C4433; --danger: #D08871;
+    }
+  }
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; margin: 0; overflow: hidden; }
+  body{
+    background: var(--paper); color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button{ font: inherit; cursor: pointer; }
+  .hud{
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; gap: 8px; padding: 12px 14px; pointer-events: none;
+  }
+  .hud > *{ pointer-events: auto; }
+  .pill{
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; font-weight: 600;
+    border: 2px solid var(--hud-bg-2); background: var(--hud-bg); border-radius: 9px;
+    padding: 6px 12px 6px 8px; color: var(--hud-ink); box-shadow: 0 2px 0 rgba(0,0,0,.25);
+  }
+  .pill.streak{ color: #FF8A5C; }
+  .pill.currency{ color: var(--cr-gold); }
+  .hud .spacer{ flex: 1; }
+  .icon-btn{
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--hud-bg-2); background: var(--hud-bg);
+    color: var(--hud-ink); font-size: 15px; display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 0 rgba(0,0,0,.25);
+  }
+  .hud-tool{
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px;
+    border: 1px solid var(--rule-strong); background: var(--paper-raised); color: var(--ink);
+    border-radius: 8px; padding: 6px 10px;
+  }
+  .hud-tool[aria-pressed="true"]{ border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .fab{
+    position: fixed; right: 16px; bottom: 16px; z-index: 20;
+    width: 52px; height: 52px; border-radius: 50%; border: none;
+    background: var(--accent); color: var(--accent-ink); font-size: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  }
+  .hint-line{
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    font-size: 11px; color: var(--muted); background: var(--paper-raised);
+    border: 1px solid var(--rule); border-radius: 12px; padding: 5px 12px; z-index: 20; max-width: 92%; text-align: center;
+  }
+  body.focus .hint-line{ display: none; }
+  #stage{ position: fixed; inset: 0; }
+  #links{ position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #links line{ stroke: var(--rule-strong); stroke-width: 1; opacity: .6; }
+  .planet{
+    position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+    box-shadow: inset -8px -8px 0 rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.22);
+  }
+  .planet.dragging{ cursor: grabbing; box-shadow: inset -8px -8px 0 rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.35); z-index: 10; }
+  .planet .pl-label{
+    position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    font-size: 11.5px; color: var(--ink); white-space: nowrap;
+    padding: 2px 8px; border-radius: 8px; pointer-events: none;
+    background: var(--paper-raised); border: 1px solid var(--rule);
+  }
+  .planet.anti{ border: 2px dashed var(--danger); box-shadow: none; }
+  .planet.anti .pl-label{ color: var(--danger); }
+  .moon{
+    position: absolute; border-radius: 50%; background: var(--muted);
+    width: 9px; height: 9px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .moon .mn-label{
+    position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    font-size: 9px; color: var(--muted); white-space: nowrap; display: none;
+  }
+  body.focus .moon{ width: 16px; height: 16px; background: var(--ink); }
+  body.focus .moon .mn-label{ display: block; }
+  .go-back{ position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20; display: none; }
+  body.focus .go-back{ display: inline-flex; }
+  @keyframes pulse{ 0%,100%{ opacity: .75; } 50%{ opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="hud">
+  <span class="pill streak">🔥 12</span>
+  <span class="pill currency">◈ 240</span>
+  <span class="spacer"></span>
+  <button class="hud-tool" id="antiToggle" aria-pressed="false" title="Mostrar antimetas (v3 §E8)">✦ Antimetas</button>
+  <button class="hud-tool" id="resetView" title="Restablecer orden circular por creación (v3 §E4)">⟲ Restablecer</button>
+  <button class="icon-btn" title="Decorativo por ahora (v3 §F2)">⚙</button>
+  <button class="icon-btn" title="Decorativo por ahora (v3 §F2)">👥</button>
+</div>
+<button class="go-back hud-tool" id="goBack" type="button">← Volver a la galaxia</button>
+<div id="stage"><svg id="links"></svg></div>
+<button class="fab" id="fabCreate" title="Crear (hotkey) — v3 §E9">+</button>
+<p class="hint-line">Arrastrá una supermeta para reordenarla — al soltar, la constelación se acomoda sola (v3 §E5). Clic en un planeta para verlo en foco (v3 §E6).</p>
+<script>
+(function(){
+  var POS_KEY = "productvt-galaxia-pos-v2";
+  var ORBIT_KEY = "productvt-galaxia-orbita-v1";
+  var stage = document.getElementById("stage");
+  var svg = document.getElementById("links");
+
+  // ---- datos: supermetas y metas (misma fuente que Configuración si existe) ----
+  function loadSupermetas(){
+    try{
+      var raw = localStorage.getItem("productvt-supermetas-v1");
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed.length) return parsed.map(function(s, i){
+          return { id: s.name, name: s.name, color: s.color || "#3A6B54", anti: !!s.anti, order: i,
+                   metas: (s.goals || []).map(function(g, j){ return { id: s.name + ":" + j, name: g }; }) };
+        });
+      }
+    }catch(e){}
+    return [
+      { id: "titulo", name: "Título", color: "#3A6B54", anti: false, metas: [
+        { id: "t1", name: "Ramo 1" }, { id: "t2", name: "Proyecto" }, { id: "t3", name: "Ayudantía" } ] },
+      { id: "tesis", name: "Tesis", color: "#4E6E8E", anti: false, metas: [
+        { id: "z1", name: "Capítulo 2" }, { id: "z2", name: "Estado del arte" } ] },
+      { id: "idiomas", name: "Idiomas", color: "#A85C6B", anti: false, metas: [
+        { id: "i1", name: "Japonés N4" }, { id: "i2", name: "Inglés C1" }, { id: "i3", name: "Práctica oral" } ] },
+      { id: "salud", name: "Salud", color: "#6B8F71", anti: false, metas: [
+        { id: "s1", name: "Gimnasio" }, { id: "s2", name: "Sueño 8h" } ] },
+      { id: "antimeta", name: "Antimeta", color: "#9C4A3A", anti: true, metas: [] }
+    ];
+  }
+  var planets = loadSupermetas();
+  planets.forEach(function(p, i){ if(p.order === undefined) p.order = i; });
+
+  function loadJSON(key, fallback){ try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch(e){ return fallback; } }
+  function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+  var angles = loadJSON(POS_KEY, {});   // { id: grados } — posición coordinada persistida (§E7)
+  var orbits = loadJSON(ORBIT_KEY, {}); // { metaId: grados } — fase orbital persistida (§E7)
+  planets.forEach(function(p){ p.metas.forEach(function(m, j){ if(orbits[m.id] === undefined) orbits[m.id] = j * (360 / Math.max(1, p.metas.length)) + 40; }); });
+
+  var showAnti = false, focusId = null, draggingId = null;
+
+  function visiblePlanets(){
+    return planets.filter(function(p){ return showAnti || !p.anti; });
+  }
+  function planetSize(p){
+    if(focusId === p.id) return Math.min(window.innerWidth, window.innerHeight) * 0.5; // §E6: mitad de pantalla
+    if(p.anti) return 22; // §E8: bien pequeñas
+    return 62;             // §E3: proporción considerable planeta:meta
+  }
+  function layoutAngles(){
+    var vis = visiblePlanets();
+    var n = vis.length;
+    var map = {};
+    vis.forEach(function(p, k){
+      var slot = -90 + (360 / n) * k; // §E4: orden de creación, sentido horario
+      map[p.id] = (!justReset && angles[p.id] !== undefined) ? angles[p.id] : slot;
+    });
+    return map;
+  }
+  var justReset = false;
+
+  function render(){
+    var w = window.innerWidth, h = window.innerHeight;
+    var cx = w / 2, cy = h / 2 + 14;
+    var R = Math.min(w, h) * (focusId ? 0 : 0.36);
+    var amap = layoutAngles();
+    var html = "";
+    planets.forEach(function(p){
+      if(!showAnti && p.anti) return; // §E8: antimetas ocultas por defecto
+      var size = planetSize(p);
+      var px, py;
+      if(focusId === p.id){ px = cx; py = cy; }
+      else if(focusId){ return; } // §E6: en foco no se ven las demás supermetas
+      else {
+        var a = amap[p.id] * Math.PI / 180;
+        px = cx + R * Math.cos(a); py = cy + R * Math.sin(a);
+        p._x = px; p._y = py;
+      }
+      var metasHtml = p.metas.map(function(m){
+        var orb = (orbits[m.id] || 0) * Math.PI / 180;
+        var rOv = focusId === p.id ? size / 2 + 46 : 52 + (m.id.length % 3) * 9; // §E6: metas con mayor resolución en foco
+        var mx = px + rOv * Math.cos(orb), my = py + rOv * Math.sin(orb);
+        m._x = mx; m._y = my;
+        return '<div class="moon" data-moon="'+m.id+'" style="left:'+(mx-4.5)+'px;top:'+(my-4.5)+'px"><span class="mn-label">'+m.name+'</span></div>';
+      }).join("");
+      html += '<div class="planet'+(p.anti?" anti":"")+(draggingId===p.id?" dragging":"")+'" data-planet="'+p.id+'" ' +
+        'style="left:'+(px-size/2)+'px;top:'+(py-size/2)+'px;width:'+size+'px;height:'+size+'px;background:'+p.color+'">' +
+        '<span class="pl-label">'+p.name+'</span></div>' + metasHtml;
+    });
+    stage.innerHTML = '<svg id="links">' + linkLines() + '</svg>' + html;
+    document.querySelectorAll("[data-planet]").forEach(function(el){
+      el.addEventListener("pointerdown", function(ev){ startPlanetDrag(el, ev); });
+    });
+  }
+
+  function linkLines(){
+    var out = "";
+    planets.forEach(function(p){
+      if(focusId && focusId !== p.id) return;
+      p.metas.forEach(function(m){
+        if(p._x === undefined || m._x === undefined) return;
+        out += '<line x1="'+p._x+'" y1="'+p._y+'" x2="'+m._x+'" y2="'+m._y+'"></line>';
+      });
+    });
+    return out;
+  }
+
+  function drawLines(){
+    var s = stage.querySelector("svg");
+    if(!s) return;
+    var out = "";
+    planets.forEach(function(p){
+      if(focusId && focusId !== p.id) return;
+      p.metas.forEach(function(m){
+        if(p._x === undefined || m._x === undefined) return;
+        out += '<line x1="'+p._x+'" y1="'+p._y+'" x2="'+m._x+'" y2="'+m._y+'"></line>';
+      });
+    });
+    s.innerHTML = out;
+  }
+  function drawMoonsFor(p){
+    var size = planetSize(p);
+    p.metas.forEach(function(m){
+      var orb = (orbits[m.id] || 0) * Math.PI / 180;
+      var rOv = focusId === p.id ? size / 2 + 46 : 52 + (m.id.length % 3) * 9;
+      var mx = p._x + rOv * Math.cos(orb), my = p._y + rOv * Math.sin(orb);
+      m._x = mx; m._y = my;
+      var el = stage.querySelector('[data-moon="'+m.id+'"]');
+      if(el){ el.style.left = (mx - 4.5) + "px"; el.style.top = (my - 4.5) + "px"; }
+    });
+    drawLines();
+  }
+
+  // ---- §E5: arrastre libre (posiciones anómalas) + empuje a las demás; al soltar,
+  // la supermeta queda en el slot circular coordinado más cercano y reordena a las demás ----
+  function startPlanetDrag(el, ev){
+    if(focusId) return;
+    var p = planets.filter(function(x){ return x.id === el.dataset.planet; })[0];
+    if(!p) return;
+    ev.preventDefault();
+    var moved = false;
+    var startX = ev.clientX, startY = ev.clientY;
+    var rect = el.getBoundingClientRect();
+    var offX = ev.clientX - rect.left - rect.width / 2;
+    var offY = ev.clientY - rect.top - rect.height / 2;
+    var size = planetSize(p);
+    draggingId = p.id;
+    el.classList.add("dragging");
+    function onMove(e2){
+      var dx = e2.clientX - startX, dy = e2.clientY - startY;
+      if(Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+      p._x = e2.clientX - offX; p._y = e2.clientY - offY;
+      el.style.left = (p._x - size / 2) + "px";
+      el.style.top = (p._y - size / 2) + "px";
+      planets.forEach(function(o){ // empuje suave tipo graph view mientras se arrastra
+        if(o === p || o._x === undefined) return;
+        var vx = o._x - p._x, vy = o._y - p._y;
+        var d = Math.sqrt(vx * vx + vy * vy) || 1;
+        if(d < 150){
+          var push = (150 - d) / 150 * 10;
+          o._x += vx / d * push; o._y += vy / d * push;
+          var oe = stage.querySelector('[data-planet="'+o.id+'"]');
+          var os = planetSize(o);
+          if(oe){ oe.style.left = (o._x - os / 2) + "px"; oe.style.top = (o._y - os / 2) + "px"; }
+          drawMoonsFor(o);
+        }
+      });
+      drawMoonsFor(p);
+    }
+    function onUp(){
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      el.classList.remove("dragging");
+      draggingId = null;
+      if(!moved){ enterFocus(p.id); return; } // §E6: clic simple → foco
+      var cx = window.innerWidth / 2, cy = window.innerHeight / 2 + 14;
+      var ang = Math.atan2(p._y - cy, p._x - cx) * 180 / Math.PI;
+      var vis = visiblePlanets().slice().sort(function(a, b){ return a.order - b.order; });
+      var n = vis.length;
+      var k = Math.round((ang + 90) / (360 / n));
+      k = ((k % n) + n) % n; // slot circular más cercano al punto de soltado
+      var cur = vis.map(function(x){ return x.id; }).indexOf(p.id);
+      vis.splice(cur, 1);
+      vis.splice(k, 0, p);
+      vis.forEach(function(x, i){
+        var real = planets.filter(function(q){ return q.id === x.id; })[0];
+        real.order = i;
+        angles[x.id] = -90 + (360 / n) * i; // nueva posición coordinada (§E5)
+      });
+      saveJSON(POS_KEY, angles); // §E7: persiste salvo reseteo
+      render();
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  // ---- §E6: vista de foco a pantalla completa ----
+  function enterFocus(id){
+    focusId = id;
+    document.body.classList.add("focus");
+    render();
+  }
+  function exitFocus(){
+    focusId = null;
+    document.body.classList.remove("focus");
+    render();
+  }
+  document.getElementById("goBack").addEventListener("click", exitFocus);
+  stage.addEventListener("click", function(ev){
+    if(!focusId) return;
+    if(ev.target === stage || ev.target.tagName === "svg" || ev.target.tagName === "line") exitFocus();
+  });
+
+  // ---- §E8: antimetas ocultas por defecto; botón las muestra bien pequeñas ----
+  document.getElementById("antiToggle").addEventListener("click", function(){
+    showAnti = !showAnti;
+    this.setAttribute("aria-pressed", String(showAnti));
+    render();
+  });
+
+  // ---- §E4: restablecer al orden circular por creación, sentido horario ----
+  document.getElementById("resetView").addEventListener("click", function(){
+    angles = {}; orbits = {};
+    planets.forEach(function(p, i){
+      if(p.order === undefined) p.order = i;
+      p.metas.forEach(function(m, j){ orbits[m.id] = j * (360 / Math.max(1, p.metas.length)) + 40; });
+    });
+    justReset = true;
+    saveJSON(POS_KEY, angles); saveJSON(ORBIT_KEY, orbits);
+    exitFocus();
+    justReset = false;
+  });
+
+  // ---- §E9: crear = hotkey (decorativo en el mockup) ----
+  var hint = document.querySelector(".hint-line");
+  var hintOriginal = hint.textContent;
+  document.getElementById("fabCreate").addEventListener("click", function(){
+    hint.textContent = "“Crear” es un hotkey: abre el flujo de supermetas/metas/tareas (v3 §E9).";
+    setTimeout(function(){ hint.textContent = hintOriginal; }, 2600);
+  });
+
+  // ---- órbita lenta de las metas (graph view vivo) + persistencia de fases (§E7) ----
+  var orbitTicks = 0;
+  setInterval(function(){
+    if(draggingId) return;
+    planets.forEach(function(p){
+      if(focusId && focusId !== p.id) return;
+      if(p._x === undefined) return;
+      p.metas.forEach(function(m){ orbits[m.id] = ((orbits[m.id] || 0) + 0.05) % 360; });
+      drawMoonsFor(p);
+    });
+    if(++orbitTicks % 100 === 0) saveJSON(ORBIT_KEY, orbits);
+  }, 50);
+
+  window.addEventListener("resize", render);
+  window.addEventListener("beforeunload", function(){ saveJSON(ORBIT_KEY, orbits); });
+  render();
+})();
+</script>
+</body>
+</html>

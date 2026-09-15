@@ -184,6 +184,13 @@
   }
   .choice .preset-x:hover{ color: var(--danger); }
 
+  .step-block{ display: flex; flex-direction: column; align-items: center; width: 100%; gap: 4px; }
+  .step-title{
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--accent); margin: 10px 0 4px; width: 100%; text-align: center;
+  }
+  .choice small{ font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--muted); }
   .new-cat-form{
     display: flex; flex-direction: column; gap: 10px; width: 100%;
     border: 1px solid var(--rule-strong); border-radius: 10px; padding: 12px;
@@ -398,6 +405,35 @@
   var METAS = loadMetas();
   function metaById(id){ return METAS.find(function(m){ return m.id === id; }); }
 
+  // ---- v3 §A: jerarquía Supermeta → Meta → Tarea/Evento ----
+  // Las supermetas se asocian a un calendario (v3 §A2); sin calendario, crean uno propio con su
+  // nombre y su color al primer bloque (v3 §D2–D3). La antimeta no da puntaje y solo contiene
+  // eventos atemporales (v3 §A7) — es la categoría invisible del cronómetro inverso.
+  var SUPERMETAS_KEY = "productvt-supermetas-v1";
+  var DEFAULT_SUPERMETAS = [
+    { id: "sg-titulo", name: "Título", color: "#3A6B54", calendar: "Título", goals: [
+      { id: "g-ramo1", name: "Ramo 1",
+        tareas: [ { id: "t-guias", name: "Estudiar guías", targetSeconds: 10 * 3600 } ],
+        eventos: [ { id: "e-certamen", name: "Certamen 1", when: "fecha definida" } ] },
+      { id: "g-proyecto", name: "Proyecto",
+        tareas: [ { id: "t-informe", name: "Escribir informe", targetSeconds: 6 * 3600 } ],
+        eventos: [ { id: "e-entrega", name: "Entrega", when: "fecha definida" } ] }
+    ] },
+    { id: "sg-tesis", name: "Tesis", color: "#4E6E8E", calendar: null, goals: [
+      { id: "g-cap2", name: "Capítulo 2",
+        tareas: [ { id: "t-escribir", name: "Escribir", targetSeconds: 20 * 3600 } ],
+        eventos: [ { id: "e-profesor", name: "Reunión con profesor", when: "atemporal" } ] }
+    ] },
+    { id: "antimeta", name: "Antimeta", color: "#9C4A3A", calendar: null, anti: true, goals: [] }
+  ];
+  function loadSupermetas(){
+    try{ var raw = localStorage.getItem(SUPERMETAS_KEY); return raw ? JSON.parse(raw) : DEFAULT_SUPERMETAS.slice(); }
+    catch(e){ return DEFAULT_SUPERMETAS.slice(); }
+  }
+  var SUPERMETAS = loadSupermetas();
+  function supermetaById(id){ return SUPERMETAS.find(function(s){ return s.id === id; }); }
+  function goalById(sg, id){ return sg ? sg.goals.find(function(g){ return g.id === id; }) : null; }
+
   var DEFAULT_TIME_OPTIONS = {
     study: [15, 20, 25, 30, 40, 50, 60, 90],
     short: [3, 5, 10, 15],
@@ -436,7 +472,11 @@
   function savePresets(list){
     try{ localStorage.setItem(PRESET_KEY, JSON.stringify(list)); }catch(e){}
   }
+  var BUILTIN_PRESET = { id: "pomo-clasico", name: "Pomodoro clásico", studyMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, cyclesBeforeLongBreak: 4 };
   var presets = loadPresets();
+  if(!presets.some(function(p){ return p.id === BUILTIN_PRESET.id; })){
+    presets = [BUILTIN_PRESET].concat(presets); // v3 §C2: preset por defecto (no persistido)
+  }
   var config = {
     studyMinutes: 25,
     shortBreakMinutes: 5,
@@ -493,6 +533,12 @@
     customTimeField: null,
     customBreakOpen: false,
     linkedMetaId: null,
+    usePreset: null,          // v3 §C2 paso 1
+    expandedBlocks: false,    // v3 §C2 botón "+" que desglosa las definiciones de bloque
+    chosenSupermetaId: null,  // v3 §C2 paso 2
+    chosenGoalId: null,       // v3 §C2 paso 3
+    blockKind: null,          // v3 §C3 paso 4: "evento" | "tarea"
+    chosenTargetId: null,     // v3 §C3: evento o tarea elegida
     activePresetId: null,
     metaFlashed: false,
     speed: 30,
@@ -570,9 +616,30 @@
       cyclesCompleted: 0, cyclesSinceLunch: 0, lunchUsed: false,
       effectiveStudySeconds: 0, bankRemainingSeconds: 0,
       stateBeforeLunch: null, pausedSegment: null,
-      pendingBreak: null, lastBreakType: null, lastBreakUsedSeconds: 0
+      pendingBreak: null, lastBreakType: null, lastBreakUsedSeconds: 0,
+      link: captureLink() // v3 §C3: calificación del bloque + calendario destino (v3 §D)
     };
     enterStudyRunning();
+  }
+
+  function captureLink(){ // v3 §C2–C3 (pasos 2–4) y §D1–D3
+    var sg = supermetaById(state.chosenSupermetaId);
+    if(!sg) return null;
+    var goal = goalById(sg, state.chosenGoalId);
+    var target = null;
+    if(goal && state.blockKind === "evento") target = goal.eventos.filter(function(e){ return e.id === state.chosenTargetId; })[0];
+    if(goal && state.blockKind === "tarea") target = goal.tareas.filter(function(t){ return t.id === state.chosenTargetId; })[0];
+    return {
+      supermeta: sg.name, anti: !!sg.anti,
+      goal: goal ? goal.name : null,
+      kind: state.blockKind,
+      target: target ? target.name : null,
+      targetSeconds: target && target.targetSeconds ? target.targetSeconds : null,
+      // v3 §D2–D3: calendario vinculado; si no hay, la supermeta crea uno propio con su nombre y color
+      calendar: sg.calendar || sg.name,
+      ownCalendar: !sg.calendar,
+      color: sg.calendar ? null : sg.color
+    };
   }
 
   function enterStudyRunning(){ // T1 / T9 / T13 (retorno) / T14->T13
@@ -803,16 +870,65 @@
 
       html += '<div class="state-label">'+(mode==="normal"?"Elegí qué vas a estudiar":"Elegí cómo vas a descansar")+'</div>';
 
-      if(mode === "normal" && presets.length){
-        html += '<div class="choices" id="presetChoices">' + presets.map(function(p){
-          var cat = CATEGORIES.find(function(c){ return c.id === p.categoryId; }) || cats[0];
-          return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'"><span class="swatch" style="background:'+cat.color+'"></span>'+p.name+'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span></button>';
-        }).join("") + '</div>';
-      }
+      if(mode === "normal"){
+        // ---- v3 §C2 paso 1: preset (por defecto «Pomodoro clásico», "+" desglosa definiciones) ----
+        html += '<div class="step-block">';
+        html += '<div class="step-title">Paso 1 · ¿Usar un preset?</div>';
+        if(state.usePreset === null){
+          html += '<div class="choices">' +
+            '<button class="choice" id="usePresetYes" type="button">Sí, usar preset</button>' +
+            '<button class="choice" id="usePresetNo" type="button">No, configurar bloques</button>' +
+            '</div>';
+        } else if(state.usePreset === true){
+          html += '<div class="choices" id="presetChoices">' + presets.map(function(p){
+            return '<button class="choice preset" data-preset="'+p.id+'" aria-pressed="'+(p.id===state.activePresetId)+'">'+p.name+'<span class="preset-x" data-del-preset="'+p.id+'" title="Borrar formato">×</span></button>';
+          }).join("") + '</div>';
+          html += '<div class="choices"><button class="choice add-cat" id="expandBlocks" type="button">'+(state.expandedBlocks ? "− Ocultar definiciones de bloque" : "+ Definiciones de bloque")+'</button></div>';
+        }
+        html += '</div>';
 
-      html += '<div class="choices" id="catChoices">' + cats.map(function(c){
-        return '<button class="choice" data-cat="'+c.id+'" aria-pressed="'+(state.category && c.id===state.category.id)+'"><span class="swatch" style="background:'+c.color+'"></span>'+c.name+'</button>';
-      }).join("") + '<button class="choice add-cat" id="openNewCat" type="button">+ Nueva</button></div>';
+        // ---- v3 §C2 pasos 2–4 + §C3: supermeta → meta → tarea/evento ----
+        var sg = supermetaById(state.chosenSupermetaId);
+        html += '<div class="step-block">';
+        html += '<div class="step-title">Paso 2 · Supermeta</div>';
+        html += '<div class="choices">' + SUPERMETAS.map(function(s){
+          return '<button class="choice" data-supermeta="'+s.id+'" aria-pressed="'+(s.id===state.chosenSupermetaId)+'"><span class="swatch" style="background:'+s.color+'"></span>'+s.name+(s.anti?'<small>· antimeta</small>':'')+'</button>';
+        }).join("") + '</div>';
+        if(sg){
+          html += '<div class="step-title">Paso 3 · Meta de «'+sg.name+'»</div>';
+          html += '<div class="choices">' + sg.goals.map(function(g){
+            return '<button class="choice" data-goal="'+g.id+'" aria-pressed="'+(g.id===state.chosenGoalId)+'">'+g.name+'</button>';
+          }).join("") + '</div>';
+          var goal = goalById(sg, state.chosenGoalId);
+          if(goal){
+            html += '<div class="step-title">Paso 4 · ¿Cómo califica este bloque?</div>';
+            html += '<div class="choices">' +
+              '<button class="choice" data-kind="evento" aria-pressed="'+(state.blockKind==="evento")+'">Evento</button>' +
+              '<button class="choice" data-kind="tarea" aria-pressed="'+(state.blockKind==="tarea")+'">Tarea</button>' +
+              '</div>';
+            if(state.blockKind === "evento"){
+              html += '<div class="choices">' + goal.eventos.map(function(ev){
+                return '<button class="choice" data-evento="'+ev.id+'" aria-pressed="'+(ev.id===state.chosenTargetId)+'"><span class="swatch" style="background:'+sg.color+'"></span>'+ev.name+'<small>'+ev.when+'</small></button>';
+              }).join("") + '</div>';
+              html += '<div class="helper">Confirma “estoy cumpliendo este evento” definido en tu meta y en tu calendario (v3 §C3).</div>';
+            }
+            if(state.blockKind === "tarea"){
+              html += '<div class="choices">' + goal.tareas.map(function(t){
+                return '<button class="choice" data-tarea="'+t.id+'" aria-pressed="'+(t.id===state.chosenTargetId)+'">'+t.name+'<small>objetivo '+fmtMin(t.targetSeconds||0)+'</small></button>';
+              }).join("") + '</div>';
+              html += '<div class="helper">El tiempo se registra de forma exacta a esta tarea atemporal (v3 §C3). Si superas el objetivo el bloque no se corta: queda exceso en estadísticas y el puntaje se gana al llegar al objetivo (v3 §C4).</div>';
+            }
+          } else if(sg.anti){
+            html += '<div class="helper">La antimeta no tiene metas: el tiempo queda registrado sin puntaje (v3 §A7).</div>';
+          }
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="choices"><button class="choice" data-supermeta="antimeta" aria-pressed="'+(state.chosenSupermetaId==="antimeta")+'"><span class="swatch" style="background:#9C4A3A"></span>Antimeta<small>categoría invisible · sin puntaje</small></button></div>';
+        html += '<div class="choices" id="catChoices">' + cats.map(function(c){
+          return '<button class="choice" data-cat="'+c.id+'" aria-pressed="'+(state.category && c.id===state.category.id)+'"><span class="swatch" style="background:'+c.color+'"></span>'+c.name+'</button>';
+        }).join("") + '<button class="choice add-cat" id="openNewCat" type="button">+ Nueva</button></div>';
+      }
 
       if(state.showNewCat){
         var isCustom = !PALETTE.includes(state.newCatColor);
@@ -828,30 +944,27 @@
       }
 
       if(mode === "normal"){
-        var metaOptions = state.category ? METAS.filter(function(m){ return m.categoryId === state.category.id; }) : [];
-        html += '<div class="settings-group"><div class="grow"><span class="glabel">Vincular a una meta (opcional)</span></div>' +
-          '<select id="linkMetaSelect"><option value="">Sin meta (aleatorio)</option>' +
-          metaOptions.map(function(m){ return '<option value="'+m.id+'" '+(m.id===state.linkedMetaId?"selected":"")+'>'+(m.parentGoalId?"— ":"")+m.name+'</option>'; }).join("") +
-          '</select></div>';
-        html += '<div class="settings-block">';
-        html += '<div class="settings-group"><div class="grow"><span class="glabel">Duración de estudio (min)</span></div>' + timeChips("study", config.studyMinutes) + '</div>';
-        html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso corto (min)</span></div>' + timeChips("short", config.shortBreakMinutes) + '</div>';
-        html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso largo (min)</span><span class="gcontrols">cada ' + selectHtml("cyclesBeforeLongSelect", CYCLES_BEFORE_LONG_OPTIONS, config.cyclesBeforeLongBreak, " ciclos") + '</span></div>' + timeChips("long", config.longBreakMinutes) + '</div>';
-        html += '</div>';
+        if(state.expandedBlocks || state.usePreset === false){
+          html += '<div class="settings-block" style="width:100%">';
+          html += '<div class="settings-group"><div class="grow"><span class="glabel">Duración de estudio (min)</span></div>' + timeChips("study", config.studyMinutes) + '</div>';
+          html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso corto (min)</span></div>' + timeChips("short", config.shortBreakMinutes) + '</div>';
+          html += '<div class="settings-group"><div class="grow"><span class="glabel">Descanso largo (min)</span><span class="gcontrols">cada ' + selectHtml("cyclesBeforeLongSelect", CYCLES_BEFORE_LONG_OPTIONS, config.cyclesBeforeLongBreak, " ciclos") + '</span></div>' + timeChips("long", config.longBreakMinutes) + '</div>';
+          html += '</div>';
 
-        var ap = activePreset();
-        if(state.showSaveForm){
-          html += '<div class="save-row">' +
-            '<input type="text" id="presetNameInput" placeholder="Nombre del formato" maxlength="24" value="'+(ap?ap.name:"")+'">' +
-            '<button class="mini-btn" id="confirmSave" type="button">Guardar</button>' +
-            '<button class="mini-btn ghost" id="cancelSave" type="button">Cancelar</button>' +
-            '</div>';
-        } else if(ap){
-          html += '<div class="save-actions"><span class="editing-tag">Editando «'+ap.name+'»</span>' +
-            '<button class="btn ghost" id="updatePreset" type="button">Actualizar</button>' +
-            '<button class="btn ghost" id="showSaveForm" type="button">Guardar como nuevo</button></div>';
-        } else {
-          html += '<button class="btn ghost" id="showSaveForm" type="button">Guardar este formato</button>';
+          var ap = activePreset();
+          if(state.showSaveForm){
+            html += '<div class="save-row">' +
+              '<input type="text" id="presetNameInput" placeholder="Nombre del formato" maxlength="24" value="'+(ap?ap.name:"")+'">' +
+              '<button class="mini-btn" id="confirmSave" type="button">Guardar</button>' +
+              '<button class="mini-btn ghost" id="cancelSave" type="button">Cancelar</button>' +
+              '</div>';
+          } else if(ap){
+            html += '<div class="save-actions"><span class="editing-tag">Editando «'+ap.name+'»</span>' +
+              '<button class="btn ghost" id="updatePreset" type="button">Actualizar</button>' +
+              '<button class="btn ghost" id="showSaveForm" type="button">Guardar como nuevo</button></div>';
+          } else {
+            html += '<button class="btn ghost" id="showSaveForm" type="button">Guardar este formato</button>';
+          }
         }
       } else {
         html += '<div class="settings-block">';
@@ -923,6 +1036,7 @@
     if(state.screen === "session_completed"){
       html += '<div class="state-label">Sesión terminada</div>';
       html += '<div class="helper">Tiempo efectivo de estudio: '+fmtMin(session.effectiveStudySeconds)+'.</div>';
+      if(session.link) html += '<div class="helper">Cada bloque quedó registrado como cuadro en el calendario «'+session.link.calendar+'»'+(session.link.ownCalendar ? ' — creado desde la supermeta, con su color' : '')+' (v3 §D).</div>';
       html += '<div class="actions"><button class="btn primary" id="backToSetup">Volver a empezar</button></div>';
     }
 
@@ -963,8 +1077,53 @@
         state.linkedMetaId = null;
         state.showNewCat = false;
         state.customTimeField = null;
+        state.usePreset = null;
+        state.expandedBlocks = false;
+        state.chosenSupermetaId = null;
+        state.chosenGoalId = null;
+        state.blockKind = null;
+        state.chosenTargetId = null;
+        state.showSaveForm = false;
         render();
       });
+    });
+
+    // ---- v3 §C2/§C3: handlers del flujo por pasos ----
+    if(el = document.getElementById("usePresetYes")) el.addEventListener("click", function(){
+      state.usePreset = true;
+      if(presets[0]) applyPresetValues(presets[0]); // «Pomodoro clásico» por defecto
+      render();
+    });
+    if(el = document.getElementById("usePresetNo")) el.addEventListener("click", function(){
+      state.usePreset = false; state.activePresetId = null; render();
+    });
+    if(el = document.getElementById("expandBlocks")) el.addEventListener("click", function(){
+      state.expandedBlocks = !state.expandedBlocks; render();
+    });
+    document.querySelectorAll("[data-supermeta]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.chosenSupermetaId = btn.dataset.supermeta;
+        state.chosenGoalId = null; state.blockKind = null; state.chosenTargetId = null;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-goal]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.chosenGoalId = btn.dataset.goal;
+        state.blockKind = null; state.chosenTargetId = null;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-kind]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.blockKind = btn.dataset.kind; state.chosenTargetId = null; render();
+      });
+    });
+    document.querySelectorAll("[data-evento]").forEach(function(btn){
+      btn.addEventListener("click", function(){ state.chosenTargetId = btn.dataset.evento; render(); });
+    });
+    document.querySelectorAll("[data-tarea]").forEach(function(btn){
+      btn.addEventListener("click", function(){ state.chosenTargetId = btn.dataset.tarea; render(); });
     });
 
     if(el = document.getElementById("startBtn")) el.addEventListener("click", function(){
@@ -1066,7 +1225,7 @@
         render();
       });
     });
-    if(el = document.getElementById("linkMetaSelect")) el.addEventListener("change", function(){ state.linkedMetaId = el.value || null; });
+    // (v3 §C) el select de meta vinculada fue reemplazado por los pasos supermeta → meta → tarea/evento
     document.querySelectorAll("#presetChoices [data-preset]").forEach(function(btn){
       btn.addEventListener("click", function(e){
         if(e.target.classList.contains("preset-x")) return;
@@ -1125,7 +1284,7 @@
     var inp = document.getElementById("presetNameInput");
     var typedName = inp && inp.value.trim();
     var data = {
-      categoryId: state.category.id,
+      categoryId: state.category ? state.category.id : null, // v3 §A2: en modo normal ya no hay categorías
       studyMinutes: config.studyMinutes,
       shortBreakMinutes: config.shortBreakMinutes,
       longBreakMinutes: config.longBreakMinutes,
