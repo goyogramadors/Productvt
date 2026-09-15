@@ -1,0 +1,12 @@
+{
+  "name": "productvt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tooling de repositorio para Productvt (no incluye la app; ver productvt-beta/).",
+  "scripts": {
+    "repomix": "repomix"
+  },
+  "devDependencies": {
+    "repomix": "^1.18.0"
+  }
+}
